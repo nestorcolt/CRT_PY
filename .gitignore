@@ -1,0 +1,14 @@
+*.pyc
+
+.idea/ColtRiggingTool.iml
+.idea/encodings.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/workspace.xml
+colt_rigging_tool/.idea/colt_rigging_tool.iml
+colt_rigging_tool/.idea/encodings.xml
+colt_rigging_tool/.idea/misc.xml
+colt_rigging_tool/.idea/modules.xml
+colt_rigging_tool/.idea/vcs.xml
+colt_rigging_tool/.idea/workspace.xml
+
