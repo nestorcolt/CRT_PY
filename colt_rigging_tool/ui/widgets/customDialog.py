@@ -33,12 +33,12 @@ class MainDialog(qw.QDialog):
     def __init__(self, *args, **kwargs):
         qw.QDialog.__init__(self, *args, **kwargs)
 
-        label = qw.QLabel('Colt Rigging Tool', parent=self)
+        self.label = qw.QLabel(' CRT V ', parent=self)
 
-        label.setFixedWidth(500)
-        label.setFixedHeight(40)
+        self.label.setFixedWidth(500)
+        self.label.setFixedHeight(40)
 
-        label.setStyleSheet("""background: transparent;
+        self.label.setStyleSheet("""background: transparent;
                                font-family: calibri;
                                font-size: 40px;
                                font-weight: 600;
@@ -48,8 +48,8 @@ class MainDialog(qw.QDialog):
                                word-spacing: 300px;
                                """)
 
-        label.move(35, 62)
-        # label.setIndent(50)
+        self.label.move(35, 62)
+        # self.label.setIndent(50)
 
     def paintEvent(self, event):
 

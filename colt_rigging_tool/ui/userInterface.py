@@ -97,8 +97,6 @@ class Colt_rigging_tool(customDialog.MainDialog):
 
         # moves the dialog to the desired location on screen to testing purposes(must delete at the end or center to screen)
         self.move(1080, 140)
-        #
-
         self.setObjectName(UI_OBJECT)
         self.setMinimumSize(550, 750)
         self.setWindowTitle('Colt Character Rigging Tool')
@@ -117,7 +115,6 @@ class Colt_rigging_tool(customDialog.MainDialog):
         mainWidget = qw.QFrame()
         mainWidget.setFixedHeight(550)
         mainWidget.setSizePolicy(qw.QSizePolicy.Minimum, qw.QSizePolicy.Expanding)
-        # mainWidget.setStyleSheet('background-color: rgba(34,34,34,20); border-radius:20px')
         self.layout().addWidget(mainWidget)
 
         #####################
