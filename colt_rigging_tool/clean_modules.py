@@ -1,16 +1,18 @@
+import inspect
 import sys
+import os
 ######################################################################################################
-print("yas!! your script it's running")
-path_to_delete = [r"C:\Users\colt-desk\Documents\Development\python\ColtRiggingTool",
-                  r"C:\Users\colt-desk\Documents\Development\python\ColtRiggingTool\colt_rigging_tool"]
-
+print("yas!! your cleaner script it's running")
+tool_module_name = "colt_rigging_tool"
+current_file = inspect.getfile(inspect.currentframe())
+module_path = os.path.dirname(inspect.getfile(colt_rigging_tool))
+path_to_delete = [module_path, os.path.dirname(module_path)]
 ######################################################################################################
 
 def dropCachedImports(*packagesToUnload):
     '''
     prepares maya to re-import
     '''
-
     def shouldUnload(module):
         for packageToUnload in packagesToUnload:
             if module.startswith(packageToUnload):
@@ -25,13 +27,14 @@ def dropCachedImports(*packagesToUnload):
 
     for path in path_to_delete:
         for itm in sys.path:
-            if path in itm:
+            if "ColtRiggingTool" in itm:
                 try:
-                    sys.path.remove(path)
-                    print("{} Removed from path".format(path))
+                    sys.path.remove(itm)
+                    print("ColtRiggingTool Removed from path")
                 except:
-                    print("Path not removed from system")
-
-dropCachedImports("colt_rigging_tool")
+                    "Path not removed from system"
 
 ######################################################################################################
+dropCachedImports(tool_module_name)
+######################################################################################################
+

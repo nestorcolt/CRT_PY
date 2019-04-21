@@ -1,8 +1,4 @@
 # -*- coding: utf-8 -*-
-from colt_rigging_tool import include_module
-include_module.loadModule()
-
-#
 from Qt import __binding__
 from Qt import QtWidgets as qw
 from Qt import QtCore as qc

@@ -1,9 +1,4 @@
 # -*- coding: utf-8 -*-
-from colt_rigging_tool import include_module
-include_module.loadModule()
-
-
-#
 from colt_rigging_tool.Qt import __binding__
 from colt_rigging_tool.Qt import QtWidgets as qw
 from colt_rigging_tool.Qt import QtCore as qc
@@ -50,6 +45,7 @@ reload(css)
 # GLOBALS:
 TOOL_GLOBAL = None
 UI_OBJECT = 'Colt_rigging_tool'
+MAIN_UI_TITLE = "   CRig  { Tool }"
 
 # this is for the borderless dialog
 X = 0
@@ -103,6 +99,9 @@ class Colt_rigging_tool(customDialog.MainDialog):
 
         self.setLayout(qw.QVBoxLayout())
 
+        # Set main window show title
+        self.label.setText(MAIN_UI_TITLE)
+
         closeButton = buttons.CloseButton()
 
         topLayout = qw.QHBoxLayout()
@@ -142,7 +141,7 @@ class Colt_rigging_tool(customDialog.MainDialog):
         self.mesh_tab = meshTab.MeshTab()
         self.tabWidget.addTab(self.mesh_tab, '- Mesh ')
 
-        # connct some signals
+        # connect some signals
         #
         closeButton.clicked.connect(lambda: self.close())
 
