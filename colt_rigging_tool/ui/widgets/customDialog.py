@@ -49,7 +49,6 @@ class MainDialog(qw.QDialog):
                                """)
 
         self.label.move(35, 62)
-        # self.label.setIndent(50)
 
     def paintEvent(self, event):
 
