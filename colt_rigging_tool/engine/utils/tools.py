@@ -3,7 +3,9 @@
     Description: tools for rig and etc etc etc
 
 """
-import maya.cmds as cmds
+import os
+
+import maya.cmds as mc
 import pymel.core as pm
 import re
 ###################################################################################################
@@ -19,7 +21,7 @@ def list_joint_hier(top_joint, with_end_joints=True):
 
     """
 
-    listed_joints = cmds.listRelatives(top_joint, type='joint', ad=True)
+    listed_joints = mc.listRelatives(top_joint, type='joint', ad=True)
     listed_joints.append(top_joint)
     listed_joints.reverse()
 
@@ -76,16 +78,16 @@ def make_offset_grp(object, prefix=''):
     if not prefix:
         prefix = remove_suffix(object)
 
-    offset_grp = cmds.group(n=prefix + '_offset_grp', em=True)
-    object_parents = cmds.listRelatives(object, p=True)
+    offset_grp = mc.group(n=prefix + '_offset_grp', em=True)
+    object_parents = mc.listRelatives(object, p=True)
 
     if object_parents:
-        cmds.parent(offset_grp, object_parents[0])
+        mc.parent(offset_grp, object_parents[0])
 
     # match object transforms
 
-    cmds.delete(cmds.parentConstraint(object, offset_grp))
-    cmds.delete(cmds.scaleConstraint(object, offset_grp))
+    mc.delete(mc.parentConstraint(object, offset_grp))
+    mc.delete(mc.scaleConstraint(object, offset_grp))
 
 
 ###################################################################################################
@@ -109,11 +111,11 @@ def undo_pm(func):
 
 def undo_cmds(func):
     def wrapper(*args, **kwargs):
-        cmds.undoInfo(openChunk=True)
+        mc.undoInfo(openChunk=True)
         try:
             ret = func(*args, **kwargs)
         finally:
-            cmds.undoInfo(closeChunk=True)
+            mc.undoInfo(closeChunk=True)
         return ret
     return wrapper
 
@@ -128,14 +130,14 @@ def undo_cmds(func):
 
 
 def find_first_joint():
-    lista = cmds.ls(type='joint')
+    lista = mc.ls(type='joint')
     parents = []
 
     for jnt in lista:
-        parent = cmds.listRelatives(jnt, p=True, ni=True)[0]
+        parent = mc.listRelatives(jnt, p=True, ni=True)[0]
         if parent:
-            if not cmds.objectType(parent, isType='joint'):
-                first_born = cmds.listRelatives(parent, c=True, type='joint')[0]
+            if not mc.objectType(parent, isType='joint'):
+                first_born = mc.listRelatives(parent, c=True, type='joint')[0]
                 # print('\nFATHER OF ALL: %s' % first_born)
                 parents.append(first_born)
 
@@ -152,11 +154,11 @@ def convert_path(path):
 
 def create_groups(obj):
 
-    matrix = cmds.xform(obj, q=1, ws=1, m=1)
-    group = cmds.group(n=obj + "_Auto", em=1)
-    root = cmds.group(n=obj + '_Root')
-    cmds.xform(root, ws=1, m=matrix)
-    cmds.parent(obj, group)
+    matrix = mc.xform(obj, q=1, ws=1, m=1)
+    group = mc.group(n=obj + "_Auto", em=1)
+    root = mc.group(n=obj + '_Root')
+    mc.xform(root, ws=1, m=matrix)
+    mc.parent(obj, group)
 
     return [root, group]
 
@@ -164,7 +166,7 @@ def create_groups(obj):
 
 
 def get_boundingBoxSize(geometry):
-    box = cmds.exactWorldBoundingBox(geometry)
+    box = mc.exactWorldBoundingBox(geometry)
     box.pop(1)
     box.pop(3)
     radius = max(box)
@@ -193,22 +195,22 @@ def getBuilder():
 
 
 def renameFamily(name=''):
-    sel = cmds.ls(sl=True)
+    sel = mc.ls(sl=True)
 
     for obj in sel:
         nameCtrl = name + '_ctrl'
         # print(nameCtrl)
-        cmds.rename(obj, nameCtrl)
-        cmds.pickWalk(direction='up')
-        auto = cmds.ls(sl=True)[0]
+        mc.rename(obj, nameCtrl)
+        mc.pickWalk(direction='up')
+        auto = mc.ls(sl=True)[0]
         nameAuto = name + '_Auto'
         # print(nameAuto)
-        cmds.rename(auto, nameAuto)
-        cmds.pickWalk(direction='up')
-        root = cmds.ls(sl=True)[0]
+        mc.rename(auto, nameAuto)
+        mc.pickWalk(direction='up')
+        root = mc.ls(sl=True)[0]
         nameRoot = name + '_Root'
         # print(nameRoot)
-        cmds.rename(root, nameRoot)
+        mc.rename(root, nameRoot)
 
 ###################################################################################################
 
@@ -260,15 +262,15 @@ def makeTwistJoints(joint, number=0):
 
     """
     # clear any selection first
-    cmds.select(clear=True)
+    mc.select(clear=True)
     #
     suffix = joint.split('_')[-1]
-    axis = cmds.joint(joint, q=True, rotationOrder=True)[0]
-    VALUE = cmds.getAttr(pm.PyNode(joint).getChildren(c=True)[0].name() + '.t%s' % axis)
+    axis = mc.joint(joint, q=True, rotationOrder=True)[0]
+    VALUE = mc.getAttr(pm.PyNode(joint).getChildren(c=True)[0].name() + '.t%s' % axis)
     lenght = abs(VALUE)
     # print(lenght, VALUE)
     oper = getOper(VALUE)
-    mtx = cmds.xform(joint, q=True, ws=True, m=True)
+    mtx = mc.xform(joint, q=True, ws=True, m=True)
     name = remove_suffix(joint) + '_twist_%d_%s'
     twists = []
 
@@ -284,8 +286,8 @@ def makeTwistJoints(joint, number=0):
                 # print(formatedValue)
                 jnt.translateX.set(float(formatedValue))
 
-        cmds.xform(twists[0], ws=True, m=mtx)
-        cmds.select(clear=True)
+        mc.xform(twists[0], ws=True, m=mtx)
+        mc.select(clear=True)
 
         return twists
 
@@ -312,8 +314,8 @@ def overrideColor(chain, color='blue'):
 
     for jnt in chain:
         # print(jnt)
-        cmds.setAttr(jnt + '.overrideEnabled', True)
-        cmds.setAttr(jnt + '.ovc', color)
+        mc.setAttr(jnt + '.overrideEnabled', True)
+        mc.setAttr(jnt + '.ovc', color)
 
     #
 ###################################################################################################
@@ -321,16 +323,16 @@ def overrideColor(chain, color='blue'):
 
 def swapJointOrient(joint):
 
-    cmds.makeIdentity(joint, translate=False, rotate=True, scale=True, pn=True, n=False, a=True)
+    mc.makeIdentity(joint, translate=False, rotate=True, scale=True, pn=True, n=False, a=True)
 
     for ch in 'XYZ':
-        jointOrient = cmds.getAttr(joint + '.jointOrient%s' % ch)
+        jointOrient = mc.getAttr(joint + '.jointOrient%s' % ch)
 
         if float(jointOrient) == float(0):
             continue
 
-        cmds.setAttr(joint + '.r%s' % ch.lower(), jointOrient)
-        cmds.setAttr(joint + '.jointOrient%s' % ch, 0.0)
+        mc.setAttr(joint + '.r%s' % ch.lower(), jointOrient)
+        mc.setAttr(joint + '.jointOrient%s' % ch, 0.0)
 
     return joint
 
@@ -369,16 +371,16 @@ def makePoleVectorLine(name, joint, poleVector):
 
     """
 
-    pv_line_pos_1 = cmds.xform(joint, q=True, t=True, ws=True)
-    pv_line_pos_2 = cmds.xform(poleVector.control, q=True, t=True, ws=True)
+    pv_line_pos_1 = mc.xform(joint, q=True, t=True, ws=True)
+    pv_line_pos_2 = mc.xform(poleVector.control, q=True, t=True, ws=True)
 
-    poleVector_curve = cmds.curve(n=name + '_pv_crv', degree=1, point=[pv_line_pos_1, pv_line_pos_2])
+    poleVector_curve = mc.curve(n=name + '_pv_crv', degree=1, point=[pv_line_pos_1, pv_line_pos_2])
 
-    cmds.cluster(poleVector_curve + '.cv[0]', n=name + '_pv1_cls', weightedNode=[joint, joint], bindState=True)
-    cmds.cluster(poleVector_curve + '.cv[1]', n=name + '_pv2_cls', weightedNode=[poleVector.control, poleVector.control], bindState=True)
+    mc.cluster(poleVector_curve + '.cv[0]', n=name + '_pv1_cls', weightedNode=[joint, joint], bindState=True)
+    mc.cluster(poleVector_curve + '.cv[1]', n=name + '_pv2_cls', weightedNode=[poleVector.control, poleVector.control], bindState=True)
 
-    cmds.setAttr(poleVector_curve + '.template', True)
-    cmds.setAttr(poleVector_curve + '.it', False)
+    mc.setAttr(poleVector_curve + '.template', True)
+    mc.setAttr(poleVector_curve + '.it', False)
 
     return poleVector_curve
 
@@ -387,12 +389,12 @@ def makePoleVectorLine(name, joint, poleVector):
 
 def hideShapesChannelBox(nodos, exception=[]):
     for itm in nodos:
-        shapes = cmds.listRelatives(itm, shapes=1)
+        shapes = mc.listRelatives(itm, shapes=1)
         # print(shapes)
         for shape in shapes:
             if shape not in exception:
                 try:
-                    cmds.setAttr("{}.isHistoricallyInteresting".format(shape), 0)
+                    mc.setAttr("{}.isHistoricallyInteresting".format(shape), 0)
                 except:
                     pass
 
@@ -403,63 +405,110 @@ def hideShapesChannelBox(nodos, exception=[]):
 
 def makeControlsVisSetup(name='visibility', prefix='limb', attrHolder=None, controlsIK=[], controlsFK=[]):
     # create nodes to set conditions:
-    node_fk = cmds.createNode('condition', name=prefix + name + '_conditionNode_FK')
-    node_ik = cmds.createNode('condition', name=prefix + name + '_conditionNode_IK')
-    node_blendIKFK = cmds.createNode('condition', name=prefix + name + '_conditionNode_IKFK_blend')
-    node_blend_FK = cmds.createNode('condition', name=prefix + name + '_conditionNode_FK_blend')
+    node_fk = mc.createNode('condition', name=prefix + name + '_conditionNode_FK')
+    node_ik = mc.createNode('condition', name=prefix + name + '_conditionNode_IK')
+    node_blendIKFK = mc.createNode('condition', name=prefix + name + '_conditionNode_IKFK_blend')
+    node_blend_FK = mc.createNode('condition', name=prefix + name + '_conditionNode_FK_blend')
 
     # setup attributes in nodes previously created
     # node_fk
-    cmds.setAttr(node_fk + '.secondTerm', 1.00)
-    cmds.setAttr(node_fk + '.operation', 0)
-    cmds.setAttr(node_fk + '.colorIfTrueR', 1)
-    cmds.setAttr(node_fk + '.colorIfFalseR', 0)
+    mc.setAttr(node_fk + '.secondTerm', 1.00)
+    mc.setAttr(node_fk + '.operation', 0)
+    mc.setAttr(node_fk + '.colorIfTrueR', 1)
+    mc.setAttr(node_fk + '.colorIfFalseR', 0)
 
     # node_ik
-    cmds.setAttr(node_ik + '.secondTerm', 0.00)
-    cmds.setAttr(node_ik + '.operation', 0)
-    cmds.setAttr(node_ik + '.colorIfTrueR', 1)
-    cmds.setAttr(node_ik + '.colorIfFalseR', 0)
+    mc.setAttr(node_ik + '.secondTerm', 0.00)
+    mc.setAttr(node_ik + '.operation', 0)
+    mc.setAttr(node_ik + '.colorIfTrueR', 1)
+    mc.setAttr(node_ik + '.colorIfFalseR', 0)
 
     # node_blendIKFK
-    cmds.setAttr(node_blendIKFK + '.operation', 3)
+    mc.setAttr(node_blendIKFK + '.operation', 3)
 
     # node_blend_FK
-    cmds.setAttr(node_blend_FK + '.operation', 1)
-    cmds.setAttr(node_blend_FK + '.colorIfTrueR', 0)
-    cmds.setAttr(node_blend_FK + '.colorIfFalseR', 1)
+    mc.setAttr(node_blend_FK + '.operation', 1)
+    mc.setAttr(node_blend_FK + '.colorIfTrueR', 0)
+    mc.setAttr(node_blend_FK + '.colorIfFalseR', 1)
 
     # add both controls vis attribute
-    cmds.addAttr(attrHolder, k=True, shortName='bothVis', longName='ShowBothSys', at='bool', defaultValue=1)
+    mc.addAttr(attrHolder, k=True, shortName='bothVis', longName='ShowBothSys', at='bool', defaultValue=1)
 
     # make connections
-    cmds.connectAttr(attrHolder + '.IK_0_FK_1', node_ik + '.firstTerm', force=True)
-    cmds.connectAttr(attrHolder + '.IK_0_FK_1', node_fk + '.firstTerm', force=True)
+    mc.connectAttr(attrHolder + '.IK_0_FK_1', node_ik + '.firstTerm', force=True)
+    mc.connectAttr(attrHolder + '.IK_0_FK_1', node_fk + '.firstTerm', force=True)
     #
-    cmds.connectAttr(node_ik + '.outColorR', node_blendIKFK + '.colorIfFalseR', force=True)
-    cmds.connectAttr(node_fk + '.outColorR', node_blendIKFK + '.colorIfTrueR', force=True)
+    mc.connectAttr(node_ik + '.outColorR', node_blendIKFK + '.colorIfFalseR', force=True)
+    mc.connectAttr(node_fk + '.outColorR', node_blendIKFK + '.colorIfTrueR', force=True)
 
     # connect inputs to blend condition node
-    cmds.connectAttr(attrHolder + '.IK_0_FK_1', node_blendIKFK + '.firstTerm', force=True)
-    cmds.connectAttr(attrHolder + '.ShowBothSys', node_blendIKFK + '.secondTerm', force=True)
+    mc.connectAttr(attrHolder + '.IK_0_FK_1', node_blendIKFK + '.firstTerm', force=True)
+    mc.connectAttr(attrHolder + '.ShowBothSys', node_blendIKFK + '.secondTerm', force=True)
 
     # connect inputs condition blend FK
-    cmds.connectAttr(node_blendIKFK + '.outColorR', node_blend_FK + '.secondTerm', force=True)
-    cmds.connectAttr(attrHolder + '.ShowBothSys', node_blend_FK + '.firstTerm', force=True)
+    mc.connectAttr(node_blendIKFK + '.outColorR', node_blend_FK + '.secondTerm', force=True)
+    mc.connectAttr(attrHolder + '.ShowBothSys', node_blend_FK + '.firstTerm', force=True)
 
     # connect blend node to Fk controls
     for ctrl in controlsFK:
-        cmds.connectAttr(node_blendIKFK + '.outColorR', ctrl + '.lodVisibility', force=True)
+        mc.connectAttr(node_blendIKFK + '.outColorR', ctrl + '.lodVisibility', force=True)
     # connect blend node to Fk controls
     for ctrl in controlsIK:
-        cmds.connectAttr(node_blend_FK + '.outColorR', ctrl + '.lodVisibility', force=True)
+        mc.connectAttr(node_blend_FK + '.outColorR', ctrl + '.lodVisibility', force=True)
 
 
 ###################################################################################################
 
+
+def get_last_file_version(path_to, file_name, incremental=False):
+    """
+    :param path_to: Path to check. OS path structure
+    :param file_name: File name example to check
+    :param incremental: Get incremental version from file name or not
+    :return: Latest file name string format
+    """
+    if os.path.exists(path_to):
+        raw_name = os.path.splitext(file_name)[0]
+        listed_files = os.listdir(path_to)
+        if not listed_files and not incremental:
+            return False
+
+        files = [os.path.splitext(itm)[0] for itm in listed_files if itm.startswith(raw_name[:-4])
+                 and itm.endswith(".json") or itm.endswith(".mb") or itm.endswith(".ma")]
+
+
+
+
+        if not files and not incremental:
+            return False
+        elif not files and incremental:
+            return file_name
+
+        else:
+            files.sort(reverse=True,
+                       key=lambda x: int(re.findall(r'\d+', os.path.splitext(os.path.split(x)[1])[0])[-1]))
+
+            latest_file = files[0]
+
+            extention = [os.path.splitext(itm)[-1] for itm in listed_files if itm.startswith(raw_name[:-4])
+                         and itm.endswith(".json") or itm.endswith(".mb") or itm.endswith(".ma")][0]
+
+            if not incremental:
+                return "{}{}".format(latest_file, extention)
+            else:
+                file_no_idx = latest_file[:-3]
+                index = str(int(latest_file[-3:]) + 1).zfill(3)
+                return "{}{}".format(file_no_idx + index, extention)
+
+
+######################################################################################################
+
+BUILDER_SCENE_PATH = r"C:\Users\colt-desk\Desktop\Salle\2019\Abril\II entrega\mech_project\data\builder\builder"
 if __name__ == '__main__':
-    # print getSideLetter(cmds.ls(sl=True)[0])
+    # print getSideLetter(mc.ls(sl=True)[0])
     # swapJointOrient('l_upperleg_rig')
     # makeTwistJoints('l_lowerleg_rig', 5)
-    print(copySkeleton('hips_jnt', 'rig'))
+    # print(copySkeleton('hips_jnt', 'rig'))
+    latest_builder = get_last_file_version(BUILDER_SCENE_PATH, "builder_001", incremental=False)
+
     pass

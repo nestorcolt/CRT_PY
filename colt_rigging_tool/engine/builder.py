@@ -1,8 +1,3 @@
-from colt_rigging_tool import include_module
-reload(include_module)
-include_module.loadModule()
-
-###################################################################################################
 
 import maya.cmds as cmds
 import pymel.core as pm
@@ -141,12 +136,13 @@ class BuildCharacterRig(object):
     # build spine and neck
     #
 
-    def buildSpine(self, rig, hipsJnt, spineEndJnt):
+    def buildSpine(self, rig, hipsJnt, spineEndJnt, neck=False):
         # spine
         self.spine = spine.SpineStretch(rigObject=rig, joints=[hipsJnt, spineEndJnt], scaleIK=4, scaleFK=20)
 
-        # neck
-        self.neck = neck.NeckObject(rigObject=rig, spineObject=self.spine, spineEnd=spineEndJnt, scaleIK=15, scaleFK=10)
+        if neck:
+            # neck
+            self.neck = neck.NeckObject(rigObject=rig, spineObject=self.spine, spineEnd=spineEndJnt, scaleIK=15, scaleFK=10)
 
     # squach and stretch spine
     def spineSqandSt(self):
@@ -172,8 +168,10 @@ class BuildCharacterRig(object):
     #
     def connectRigToSpine(self):
         spineTargets = self.spine.targets
-        neckTargets = self.neck.targets
-        spineTargets.extend(neckTargets)
+
+        if self.neck is not None:
+            neckTargets = self.neck.targets
+            spineTargets.extend(neckTargets)
 
         for tar, jnt in zip(spineTargets, self.rigJoints[:len(spineTargets)]):
             cmds.parentConstraint(tar, jnt, mo=True)
@@ -460,89 +458,3 @@ class BuildCharacterRig(object):
             if cmds.objExists(itm):
                 cmds.delete(itm)
 
-###################################################################################################
-#
-#
-
-def initChar():
-    # INFO
-    character = 'Mark'
-    geo = 'mark_body_geo'
-    builder = tools.getBuilder()
-
-    # SPINE
-    HIPS = 'hips_jnt'
-    SPINE_END = 'spine_end_jnt'
-
-    # ARMS
-    l_arm = 'l_upperarm_rig'
-    r_arm = 'r_upperarm_rig'
-
-    # LEGS
-    l_leg = 'l_upperleg_rig'
-    r_leg = 'r_upperleg_rig'
-
-    # call character builder object
-    charObj = BuildCharacterRig()
-    charObj.populateProperties(geometry=geo, character=character, builder=builder)
-
-    # rig structure
-    charObj.rigging = charObj.makeRig(charObj.character, charObj.geometry, charObj.builder)
-    charObj.getSkeletons(structure=charObj.rigging)
-
-    # make spine
-    charObj.buildSpine(charObj.rigging, HIPS, SPINE_END)
-    charObj.spineSqandSt()
-
-    # make arms:
-    charObj.l_arm = charObj.buildArm(l_arm, True, True, True)
-    charObj.r_arm = charObj.buildArm(r_arm, True, True, True)
-
-    # make legs:
-    charObj.l_leg = charObj.buildLeg(l_leg, True, True, True)
-    charObj.r_leg = charObj.buildLeg(r_leg, True, True, True)
-
-    # feet
-    charObj.createFootGuideLocators(charObj.footDummies)
-    charObj.buildFeet()
-
-    # leg visibility
-    charObj.makeLegVisSys()
-    charObj.doClean()
-
-    # connect rig to spine targes
-    charObj.connectRigToSpine()
-
-    # connect both joint systems
-    charObj.connectDefJoints(charObj.defJoints, charObj.rigJoints)
-
-    # match twist sytems
-    charObj.matchTwistSystem()
-
-    # Skin cluster
-    charObj.buildSkin(meshes=['mark_body_geo', 'l_eye_geo', 'r_eye_geo'])
-
-    # hide show joints
-    # charObj.jointsVisibility()
-
-    # calibrate spine curve for squach and stretch
-    # charObj.calibrateSpineStretch()
-
-    # MANAGING WEIGHTS
-    # charObj.manageWeights(geometries=['mark_body_geo', 'l_eye_geo', 'r_eye_geo'], save=False)
-
-    # DONE!
-    om.MGlobal.displayInfo(" Rigging Done! ")
-    # cmds.select(clear=True)
-
-    return charObj
-
-###################################################################################################
-
-
-if __name__ == '__main__':
-    rig = initChar()
-    # rig.setupFootRoll(value=0, force=True)
-    # rig.setupHandRoll(value=0, force=True)
-    cmds.select(clear=True)
-    pass

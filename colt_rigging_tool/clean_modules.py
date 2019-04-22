@@ -1,6 +1,12 @@
 import inspect
 import sys
 import os
+
+try:
+    import colt_rigging_tool
+except:
+    raise ValueError
+
 ######################################################################################################
 print("yas!! your cleaner script it's running")
 tool_module_name = "colt_rigging_tool"
