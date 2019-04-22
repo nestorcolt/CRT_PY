@@ -146,4 +146,4 @@ PATH = r"C:\Users\colt-desk\Desktop\Salle\2019\Abril\II entrega\mech_project\dat
 
 if __name__ == '__main__':
     instance = Export_controls_info()
-    instance.do_this(path=PATH, import_mode=True)
+    instance.do_this(path=PATH, import_mode=False)

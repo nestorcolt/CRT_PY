@@ -71,6 +71,10 @@ def initChar(asset_name=None, debug = 1):
     HIPS = 'hips_jnt'
     SPINE_END = 'spine_end_jnt'
 
+    # ARMS
+    # l_arm = 'l_upperarm_rig'
+    # r_arm = 'r_upperarm_rig'
+
     # LEGS
     l_leg = 'l_upperleg_rig'
     r_leg = 'r_upperleg_rig'
@@ -86,6 +90,10 @@ def initChar(asset_name=None, debug = 1):
     # # make spine
     charObj.buildSpine(charObj.rigging, HIPS, SPINE_END, do_neck=False)
     # charObj.spineSqandSt()
+    #
+    # # make arms:
+    # charObj.l_arm = charObj.buildArm(l_arm, True, True, True)
+    # charObj.r_arm = charObj.buildArm(r_arm, True, True, True)
 
     # make legs:
     charObj.l_leg = charObj.buildLeg(l_leg, ikSys=True, fkSys=True, twist=False, twistValue=5)
@@ -97,7 +105,7 @@ def initChar(asset_name=None, debug = 1):
 
     # leg visibility
     charObj.makeLegVisSys()
-    charObj.doClean()
+    # charObj.doClean()
 
     # connect rig to spine targes
     charObj.connectRigToSpine()
@@ -105,8 +113,20 @@ def initChar(asset_name=None, debug = 1):
     # connect both joint systems
     charObj.connectDefJoints(charObj.defJoints, charObj.rigJoints)
 
+    # # match twist sytems
+    # charObj.matchTwistSystem()
+
     # Skin cluster
-    charObj.buildSkin(meshes=["mech_geoShape"])
+    # charObj.buildSkin(meshes=['mark_body_geo', 'l_eye_geo', 'r_eye_geo'])
+
+    # hide show joints
+    # charObj.jointsVisibility()
+
+    # calibrate spine curve for squach and stretch
+    # charObj.calibrateSpineStretch()
+
+    # MANAGING WEIGHTS
+    # charObj.manageWeights(geometries=['mark_body_geo', 'l_eye_geo', 'r_eye_geo'], save=False)
 
     # Load control shapes
     controls_shapes = controls_info.Export_controls_info()
@@ -114,15 +134,7 @@ def initChar(asset_name=None, debug = 1):
 
 
     # Hide controls
-    to_hide = [u'spine_1_FK_ctrl', u'spine_2_IK_ctrl', u'spine_3_IK_ctrl', u'spine_1_IK_ctrl',
-               u'spine_4_IK_ctrl', "hips_IK_ctrl", "spine_end_IK_ctrl"]
-
-    moreHide = [u'l_tillOut_IK_ctrl', u'l_toes_tip_IK_ctrl', u'l_tillIn_IK_ctrl', u'l_heel_IK_ctrl', u'l_ball_IK_ctrl',
-                u'l_toes_IK_ctrl', u'r_heel_IK_ctrl', u'r_tillOut_IK_ctrl', u'r_toes_tip_IK_ctrl', u'r_tillIn_IK_ctrl',
-                u'r_toes_IK_ctrl', u'r_ball_IK_ctrl']
-
-    to_hide.extend(moreHide)
-
+    to_hide = [u'spine_1_FK_ctrl', u'spine_2_IK_ctrl', u'spine_3_IK_ctrl', u'spine_1_IK_ctrl', u'spine_4_IK_ctrl']
     for ctrl in to_hide:
         node = pm.PyNode(ctrl)
         shapes = [itm.name() for itm in node.getShapes() if isinstance(itm, pm.nt.NurbsCurve)]
@@ -131,10 +143,6 @@ def initChar(asset_name=None, debug = 1):
 
     # finish attributes
     mc.setAttr("{}.jointsVis".format("mech_global_ctrl"), debug)
-
-    # dirt fix spine scale
-    for itm in "XYZ":
-        mc.connectAttr("mech_global_ctrl.globalScale", "hips_rig.scale{}".format(itm))
 
     if debug:
         mc.setAttr("{}.jointsDisplay".format("mech_global_ctrl"), 0)

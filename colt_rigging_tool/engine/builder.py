@@ -219,7 +219,6 @@ class BuildCharacterRig(object):
     #
     def buildLeg(self, upperLegJoint, ikSys=False, fkSys=False, twist=False, twistValue=5):
         # instance:
-        print(self.rigging.global_control_obj)
         leg = legs.Leg(legJoint=upperLegJoint, scaleFK=8, rig_module=self.rigging)
 
         if ikSys:
@@ -420,7 +419,8 @@ class BuildCharacterRig(object):
 
         cmds.select(clear=True)
         for msh in meshes:
-            cmds.skinCluster(self.defJoints[0], msh, name=msh + '_SkinCluster', dr=4.0, skinMethod=method, maximumInfluences=5)
+            cmds.skinCluster(self.defJoints[0], msh, name=msh + '_SkinCluster', dr=4.0, skinMethod=method,
+                             maximumInfluences=50)
 
     ###################################################################################################
     # manage weights from character
