@@ -88,7 +88,7 @@ def initChar(asset_name=None, debug = 1):
     charObj.getSkeletons(structure=charObj.rigging)
 
     # # make spine
-    charObj.buildSpine(charObj.rigging, HIPS, SPINE_END, neck=False)
+    charObj.buildSpine(charObj.rigging, HIPS, SPINE_END, do_neck=False)
     # charObj.spineSqandSt()
     #
     # # make arms:
@@ -105,7 +105,7 @@ def initChar(asset_name=None, debug = 1):
 
     # leg visibility
     charObj.makeLegVisSys()
-    charObj.doClean()
+    # charObj.doClean()
 
     # connect rig to spine targes
     charObj.connectRigToSpine()

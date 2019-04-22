@@ -23,7 +23,8 @@ UPPERLEG_JOINT = 'r_upperleg_rig'
 
 class Leg(object):
 
-    def __init__(self, legJoint='', name='legClass', prefix='leg', scale=1.0, scaleIK=1.0, scaleFK=1.0, controlAngle=30):
+    def __init__(self, legJoint='', name='legClass', prefix='leg', scale=1.0, scaleIK=1.0, scaleFK=1.0,
+                 rig_module=None, controlAngle=30):
 
         print(
             """
@@ -89,6 +90,7 @@ class Leg(object):
         self.poleVectorAttachLine = None
         self.attachLineGrp = None
         #
+        self.global_control = rig_module.global_control_obj.control
 
         self.checkBlend = False
 
@@ -473,6 +475,7 @@ class Leg(object):
 
         ik_distBetween = cmds.createNode('distanceBetween', n=self.letter + '_' + self.prefix + '_distanceBetween_ikStretch')
         ik_condition = cmds.createNode('condition', n=self.letter + '_' + self.prefix + '_condition_ikStretch')
+        ibypass_multiDiv = cmds.createNode('multiplyDivide', n=self.letter + '_' + self.prefix + '_multiDiv_ikStretchFix')
         ik_multiDiv_A = cmds.createNode('multiplyDivide', n=self.letter + '_' + self.prefix + '_multiDiv_ikStretch_A')
         ik_multiDiv_B = cmds.createNode('multiplyDivide', n=self.letter + '_' + self.prefix + '_multiDiv_ikStretch_B')
 
@@ -483,13 +486,17 @@ class Leg(object):
         # connect to multiply divide A
         cmds.setAttr(ik_multiDiv_A + '.input2X', value)
         cmds.setAttr(ik_multiDiv_A + '.operation', 2)
-        cmds.connectAttr(ik_distBetween + '.distance', ik_multiDiv_A + '.input1X', f=True)
+        cmds.setAttr(ibypass_multiDiv + '.operation', 2)
+        #
+        cmds.connectAttr(ik_distBetween + '.distance', ibypass_multiDiv + '.input1X', f=True)
+        cmds.connectAttr(self.global_control + '.globalScale', ibypass_multiDiv + '.input2X', f=True)
 
         # connect condition node
         cmds.setAttr(ik_condition + '.secondTerm', value)
         cmds.setAttr(ik_condition + '.operation', 2)
 
-        cmds.connectAttr(ik_distBetween + '.distance', ik_condition + '.firstTerm', f=True)
+        cmds.connectAttr(ibypass_multiDiv + '.outputX', ik_condition + '.firstTerm', f=True)
+        cmds.connectAttr(ibypass_multiDiv + '.outputX', ik_multiDiv_A + '.input1X', f=True)
         cmds.connectAttr(ik_multiDiv_A + '.outputX', ik_condition + '.colorIfTrueR', f=True)
 
         # connect to multiply divide B

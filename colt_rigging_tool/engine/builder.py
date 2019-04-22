@@ -136,11 +136,11 @@ class BuildCharacterRig(object):
     # build spine and neck
     #
 
-    def buildSpine(self, rig, hipsJnt, spineEndJnt, neck=False):
+    def buildSpine(self, rig, hipsJnt, spineEndJnt, do_neck=False):
         # spine
         self.spine = spine.SpineStretch(rigObject=rig, joints=[hipsJnt, spineEndJnt], scaleIK=4, scaleFK=20)
 
-        if neck:
+        if do_neck:
             # neck
             self.neck = neck.NeckObject(rigObject=rig, spineObject=self.spine, spineEnd=spineEndJnt, scaleIK=15, scaleFK=10)
 
@@ -219,7 +219,8 @@ class BuildCharacterRig(object):
     #
     def buildLeg(self, upperLegJoint, ikSys=False, fkSys=False, twist=False, twistValue=5):
         # instance:
-        leg = legs.Leg(legJoint=upperLegJoint, scaleFK=8)
+        print(self.rigging.global_control_obj)
+        leg = legs.Leg(legJoint=upperLegJoint, scaleFK=8, rig_module=self.rigging)
 
         if ikSys:
             leg.makeIK()

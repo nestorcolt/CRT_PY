@@ -69,7 +69,7 @@ class Base():
             global_control_obj = control.Control(prefix=characterName + '_global', scale=scale * 40, parent=self.bodyRig_group, lockChannels=['v'])
 
         # add global scale attribute
-        cmds.addAttr(global_control_obj.control, ln='globalScale', at='float', k=True, defaultValue=1.0)
+        cmds.addAttr(global_control_obj.control, ln='globalScale', at='float', k=True, defaultValue=1.0, minValue=0.2)
         for axis in 'xyz':
             cmds.connectAttr(global_control_obj.control + '.globalScale', global_control_obj.control + '.s%s' % axis)
 
