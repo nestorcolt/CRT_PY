@@ -508,6 +508,21 @@ def get_last_file_version(path_to, file_name, incremental=False):
 
 ######################################################################################################
 
+def create_deformation_joints_for_module(module=None):
+    relative_joints = [itm for itm in mc.listRelatives(module, ad=True, type="joint")
+                       if "FK" not in itm and  "IK" not in itm]
+    skell_grp_name = module.replace("_rig_", "_skell_")
+    skell_grp = mc.createNode("transform", n=skell_grp_name)
+    #
+    for jnt in relative_joints:
+        new_name = jnt.replace("_JNT", "_DEF")
+        mc.duplicate(jnt, n=new_name, po=True)
+        mc.parent(new_name, skell_grp)
+        #
+        mc.parentConstraint(jnt, new_name)
+
+######################################################################################################
+
 BUILDER_SCENE_PATH = r"C:\Users\colt-desk\Desktop\Salle\2019\Abril\II entrega\mech_project\data\builder\builder"
 if __name__ == '__main__':
     # print getSideLetter(mc.ls(sl=True)[0])
