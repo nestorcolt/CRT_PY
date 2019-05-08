@@ -2,15 +2,15 @@ import collections
 import maya.cmds as cmds
 import pymel.core as pm
 import maya.mel as mel
-from engine.utils import tools
-from engine.setups.controls import control
+from colt_rigging_tool.engine.utils import tools
+from colt_rigging_tool.engine.setups.controls import control
 
 reload(control)
 reload(tools)
 
 ###################################################################################################
 # GLOBALS:
-UPPERARM_JOINT = 'l_upperarm_rig'
+UPPERARM_JOINT = 'L_upperArm_RIG'
 
 ###################################################################################################
 """
@@ -24,7 +24,14 @@ UPPERARM_JOINT = 'l_upperarm_rig'
 
 class Arm(object):
 
-    def __init__(self, armJoint='', name='armClass', prefix='arm', scale=1.0, scaleIK=1.0, scaleFK=1.0, controlAngle=30):
+    def __init__(self, armJoint='',
+                 name='armClass',
+                 prefix='arm',
+                 scale=1.0,
+                 scaleIK=1.0,
+                 scaleFK=1.0,
+                 controlAngle=30,
+                 pole_vector_distance = 60):
 
         print(
             """
@@ -43,15 +50,12 @@ class Arm(object):
         # clavicle joint
         self.clavicle = cmds.listRelatives(armJoint, p=True)[0]
 
-        # general limb parent
-        self.parent = cmds.listRelatives(self.clavicle, p=True)[0]
-
         # List joint chain from leg
         self.shortChain = tools.list_joint_hier(armJoint)
 
         # unparentHandFromSystem
         self.hand = {}
-        self.hand[self.shortChain[-1]] = cmds.parent(cmds.listRelatives(self.shortChain[-1])[0], w=True)[0]
+        # self.hand[self.shortChain[-1]] = cmds.parent(cmds.listRelatives(self.shortChain[-1])[0], w=True)[0]
         # print(self.hand)
 
         #
@@ -74,6 +78,7 @@ class Arm(object):
         # check if ik system exist
         self.checkIK = False
         self.checkIKStretch = False
+        self.poleVector_distance = pole_vector_distance
 
         # check if ik is already into global grp
         self.groupedIK = False
@@ -98,7 +103,7 @@ class Arm(object):
         #
         # holder group Init
         self.arm_main_grp = cmds.group(name=self.letter + '_' + prefix + '_sys_grp', em=True)
-        cmds.xform(self.arm_main_grp, ws=True, m=cmds.xform(self.parent, q=True, ws=True, m=True))
+
         #
         #
 
@@ -109,22 +114,25 @@ class Arm(object):
         cmds.parent(self.clavicle, self.main_grp)
         cmds.parent(self.main_grp, self.arm_main_grp)
 
-        # parent main sys group to spine joint (system parent)
-        # cmds.parent(self.arm_main_grp, self.parent)
-
-        #
+        ######################################################################################################
         # create shape attribute holder
-        self.locShape = pm.spaceLocator(n=self.letter + '_' + self.prefix + '_attributeHolder')
-        self.attributeHolder = pm.ls(self.locShape, long=True)[0].getShape()
-        cb_attrs = self.attributeHolder.listAttr(cb=True)
+        #
+        self.attributeHolder_obj = pm.circle(n=self.letter + '_' + self.prefix + '_UI_CTL')[0]
+        self.attributeHolder = self.attributeHolder_obj.name()
+        cb_attrs = self.attributeHolder_obj.listAttr(k=True)
+        cmds.parentConstraint(self.shortChain[-1], self.attributeHolder)
+        cmds.parent(self.attributeHolder, self.arm_main_grp)
 
-        # hide attributeHolder
-        pm.hide(self.attributeHolder)
+        tools.overrideColor(self.attributeHolder, "red", single=True)
 
         for attr in cb_attrs:
             attr.lock()
-            pm.setAttr(attr.name(), cb=False)
+            try:
+                pm.setAttr(attr.name(), cb=False, k=False)
+            except:
+                pass
 
+        ######################################################################################################
         # INIT NODES VARS FOR STRETCH SYS
         self.IKStretchNode = None
         self.FKStretchNode = None
@@ -178,12 +186,6 @@ class Arm(object):
 
     @tools.undo_cmds
     def groupSystem(self):
-
-        try:
-            pm.parent(self.locShape, self.arm_main_grp)
-        except:
-            print('attribute holder already grouped')
-
         #
         if self.checkFK and not self.groupedFK:
             cmds.parent(self.fk_group, self.arm_main_grp)
@@ -271,7 +273,8 @@ class Arm(object):
         fk_hier.reverse()
 
         # parent to general fk leg system group
-        cmds.parent(fk_controls[0].root, fk_group)
+        # cmds.parent(fk_controls[0].root, fk_group) # TODO parent FK Controls root to system if available assetRigNode
+
 
         # populate class fk properties
         self.fk_group = fk_group
@@ -282,8 +285,7 @@ class Arm(object):
         self.checkFK = True
         #
         #
-        for itm in fk_controls:
-            pm.parent(self.attributeHolder, itm.control, add=True, s=True)
+
 
         return {'fk_group': fk_group, 'fk_hier': fk_hier, 'fk_controls': fk_controls}
 
@@ -327,9 +329,9 @@ class Arm(object):
 
         # check if joint T value is positive oor negative
         if cmds.getAttr(ik_hier[2] + '.tx') < 0:
-            cmds.move(60, poleVec.root, moveZ=True, objectSpace=True, absolute=True)
+            cmds.move(self.poleVector_distance , poleVec.root, moveZ=True, worldSpace=True, absolute=True)
         elif cmds.getAttr(ik_hier[2] + '.tx') >= 0:
-            cmds.move(60, poleVec.root, moveZ=True, objectSpace=True, absolute=True)
+            cmds.move(self.poleVector_distance * -1, poleVec.root, moveZ=True, worldSpace=True, absolute=True)
 
         cmds.delete(cmds.orientConstraint(ik_hier[2], poleVec.root))
 
@@ -341,19 +343,19 @@ class Arm(object):
         cmds.parent(ik_handle[0], ik_group)
 
         # create IK control
-        ik_control = control.Control(prefix=self.letter + '_' + self.prefix + '_IK', shape=2, angle='x', translateTo=ik_hier[-1], rotateTo=ik_hier[-1], scale=self.scale * 6)
+        ik_control = control.Control(prefix=self.letter + '_' + self.prefix + '_IK', shape=2, angle='x',
+                                     translateTo=ik_hier[-1], rotateTo=ik_hier[-1], scale=self.scale * 6)
         cmds.parentConstraint(ik_control.control, ik_handle[0])
-
-        pm.parent(self.attributeHolder, ik_control.control, add=True, s=True)
 
         # IK clavicle control
         clavNameCtrl = tools.remove_suffix(ik_main_jnt)
-        ik_clavicleControl = control.Control(prefix=clavNameCtrl + '_IK', shape=4, translateTo=ik_hier[0], rotateTo=ik_hier[0], scale=self.scale)
+        ik_clavicleControl = control.Control(prefix=clavNameCtrl + '_IK', shape=4, translateTo=ik_hier[0],
+                                             rotateTo=ik_hier[0], scale=self.scale)
 
         if cmds.getAttr(ik_hier[0] + '.tx') >= 0:
-            cmds.move(10, ik_clavicleControl.control + ".cv[*]", moveZ=True, absolute=True)
+            cmds.move(10, ik_clavicleControl.control + "*Shape" + ".cv[*]", moveZ=True, absolute=True)
         elif cmds.getAttr(ik_hier[0] + '.tx') < 0:
-            cmds.move(10, ik_clavicleControl.control + ".cv[*]", moveZ=True, absolute=True)
+            cmds.move(10, ik_clavicleControl.control + "*Shape" + ".cv[*]", moveZ=True, absolute=True)
 
         cmds.parent(ik_hier[0], ik_clavicleControl.control)
         cmds.parent(ik_clavicleControl.root, ik_group)
@@ -845,23 +847,23 @@ def loader():
     arm.makeFK()
     arm.makeIK()
 
-    arm.makeHand()
-    arm.make_auto_fist(force=True)
+    # arm.makeHand()
+    # arm.make_auto_fist(force=True)
 
     arm.groupSystem()
     arm.makeBlending()
 
-    arm.makeFkStretchSystem()
-    arm.makeIkStretchSystem()
+    # arm.makeFkStretchSystem()
+    # arm.makeIkStretchSystem()
 
-    arm.connectStretchSystem()
-
-    arm.collectTwistJoints(arm.shortChain[:-1], index=5)
-    arm.makeTwistSystem()
-
-    arm.hideShapesCB()
-    arm.controlsVisibilitySetup()
-    arm.clean()
+    # arm.connectStretchSystem()
+    #
+    # arm.collectTwistJoints(arm.shortChain[:-1], index=5)
+    # arm.makeTwistSystem()
+    #
+    # arm.hideShapesCB()
+    # arm.controlsVisibilitySetup()
+    # arm.clean()
 
     return arm
 

@@ -5,7 +5,7 @@
 """
 
 import maya.cmds as cmds
-from engine.utils import tools
+from colt_rigging_tool.engine.utils import tools
 
 ##################################################################################################
 
@@ -43,19 +43,19 @@ class Control(object):
         self.angle = angle
 
         if shape == 1:
-            control_object = cmds.circle(n=prefix + '_ctrl', normal=[0, 1, 0], ch=False, radius=1.0)[0]
+            control_object = cmds.circle(n=prefix + '_CTL', normal=[0, 1, 0], ch=False, radius=1.0)[0]
         elif shape == 2:
-            control_object = cmds.curve(n=prefix + '_ctrl', d=1, p=[(-1, 0, -1), (-1, 0, 1), (1, 0, 1), (1, 0, -1), (-1, 0, -1)], k=[0, 1, 2, 3, 4])
+            control_object = cmds.curve(n=prefix + '_CTL', d=1, p=[(-1, 0, -1), (-1, 0, 1), (1, 0, 1), (1, 0, -1), (-1, 0, -1)], k=[0, 1, 2, 3, 4])
         elif shape == 3:
-            control_object = cmds.circle(n=prefix + '_ctrl', ch=False, normal=[1, 0, 0], radius=1.0)[0]
-            add_shape = cmds.circle(n=prefix + '_ctrl2', ch=False, normal=[0, 0, 1], radius=1.0)[0]
+            control_object = cmds.circle(n=prefix + '_CTL', ch=False, normal=[1, 0, 0], radius=1.0)[0]
+            add_shape = cmds.circle(n=prefix + '_CTL2', ch=False, normal=[0, 0, 1], radius=1.0)[0]
             cmds.parent(cmds.listRelatives(add_shape, shapes=True), control_object, r=True, s=True)
             cmds.delete(add_shape)
 
         elif shape == 4:
-            control_object = cmds.circle(n=prefix + '_ctrl', ch=False, normal=[1, 0, 0], radius=1.0)[0]
-            add_shape = cmds.circle(n=prefix + '_ctrl2', ch=False, normal=[0, 0, 1], radius=1.0)[0]
-            add_shape_2 = cmds.circle(n=prefix + '_ctrl3', ch=False, normal=[0, 1, 0], radius=1.0)[0]
+            control_object = cmds.circle(n=prefix + '_CTL', ch=False, normal=[1, 0, 0], radius=1.0)[0]
+            add_shape_2 = cmds.circle(n=prefix + '_CTL3', ch=False, normal=[0, 1, 0], radius=1.0)[0]
+            add_shape = cmds.circle(n=prefix + '_CTL2', ch=False, normal=[0, 0, 1], radius=1.0)[0]
             cmds.parent(cmds.listRelatives(add_shape, shapes=True), control_object, r=True, s=True)
             cmds.parent(cmds.listRelatives(add_shape_2, shapes=True), control_object, r=True, s=True)
             cmds.delete(add_shape)

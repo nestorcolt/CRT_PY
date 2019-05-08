@@ -78,7 +78,7 @@ def make_offset_grp(object, prefix=''):
     if not prefix:
         prefix = remove_suffix(object)
 
-    offset_grp = mc.group(n=prefix + '_offset_grp', em=True)
+    offset_grp = mc.group(n=prefix + '_OFFSET_GRP', em=True)
     object_parents = mc.listRelatives(object, p=True)
 
     if object_parents:
@@ -155,8 +155,8 @@ def convert_path(path):
 def create_groups(obj):
 
     matrix = mc.xform(obj, q=1, ws=1, m=1)
-    group = mc.group(n=obj + "_Auto", em=1)
-    root = mc.group(n=obj + '_Root')
+    group = mc.group(n=obj + "_OFFSET", em=1)
+    root = mc.group(n=obj + '_ROOT')
     mc.xform(root, ws=1, m=matrix)
     mc.parent(obj, group)
 
@@ -198,17 +198,17 @@ def renameFamily(name=''):
     sel = mc.ls(sl=True)
 
     for obj in sel:
-        nameCtrl = name + '_ctrl'
+        nameCtrl = name + '_CTL'
         # print(nameCtrl)
         mc.rename(obj, nameCtrl)
         mc.pickWalk(direction='up')
         auto = mc.ls(sl=True)[0]
-        nameAuto = name + '_Auto'
+        nameAuto = name + '_OFFSET'
         # print(nameAuto)
         mc.rename(auto, nameAuto)
         mc.pickWalk(direction='up')
         root = mc.ls(sl=True)[0]
-        nameRoot = name + '_Root'
+        nameRoot = name + '_ROOT'
         # print(nameRoot)
         mc.rename(root, nameRoot)
 
@@ -294,7 +294,7 @@ def makeTwistJoints(joint, number=0):
 ###################################################################################################
 
 
-def overrideColor(chain, color='blue'):
+def overrideColor(chain, color='blue', single=False):
     """
 
         Description: overide color from joint chain
@@ -312,10 +312,15 @@ def overrideColor(chain, color='blue'):
     elif color == 'yellow':
         color = 17
 
-    for jnt in chain:
-        # print(jnt)
-        mc.setAttr(jnt + '.overrideEnabled', True)
-        mc.setAttr(jnt + '.ovc', color)
+    if not single:
+        for jnt in chain:
+            # print(jnt)
+            mc.setAttr(jnt + '.overrideEnabled', True)
+            mc.setAttr(jnt + '.ovc', color)
+
+    else:
+        mc.setAttr(chain + '.overrideEnabled', True)
+        mc.setAttr(chain + '.ovc', color)
 
     #
 ###################################################################################################
