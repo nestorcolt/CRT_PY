@@ -526,6 +526,18 @@ def create_deformation_joints_for_module(module=None):
         #
         mc.parentConstraint(jnt, new_name)
 
+
+######################################################################################################
+
+def re_open_current_file():
+    current_file = mc.file(q=True, sceneName=True)
+    if os.path.exists(current_file):
+        mc.file(new=True, force=True)
+        mc.file(current_file, open=True)
+        mc.viewFit()
+    else:
+        mc.file(new=True, force=True)
+
 ######################################################################################################
 
 BUILDER_SCENE_PATH = r"C:\Users\colt-desk\Desktop\Salle\2019\Abril\II entrega\mech_project\data\builder\builder"

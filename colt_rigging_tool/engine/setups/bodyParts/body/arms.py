@@ -67,9 +67,36 @@ class Arm(limb.Limb):
         self.hand = {}
         self.hand_module_grp = None
 
-        # print(self.hand)
+    ######################################################################################################
 
+    @tools.undo_cmds
+    def build(self, hand_join="", twist_chain_len=5):
+
+        self.makeFK()
+        self.makeIK()
+        
+        if hand_join:
+            self.makeHand(hand_joint=hand_join)
+            self.make_auto_fist(force=True)
+
+        self.groupSystem()
+        self.makeBlending()
+
+        self.makeIkClavicle(chain=self.ik_hier, rigGroup=self.ik_group)
+        self.create_deformation_chain()
+
+        self.makeFkStretchSystem()
+        self.makeIkStretchSystem()
+
+        self.connectStretchSystem()
         #
+        self.collectTwistJoints(limbJoints=self.inputChain[1:-1], index=twist_chain_len)
+        self.makeTwistSystem()
+        #
+        self.hideShapesCB()
+        self.controlsVisibilitySetup()
+        # self.clean()
+
         ######################################################################################################
 
     def makeIkClavicle(self, chain=[], rigGroup=""):
@@ -257,47 +284,18 @@ class Arm(limb.Limb):
 # builder function to keep class instances inside of a function and not in global
 
 
-@tools.undo_cmds
-def loader():
 
-    # delete unused nodes
-    mel.eval('MLdeleteUnused;')
-
-    # instance:
-    arm = Arm(armJoint=UPPERARM_JOINT, scaleFK=8)
-
-    arm.makeFK()
-    arm.makeIK()
-
-    arm.makeHand(hand_joint=HAND_JOINT)
-    arm.make_auto_fist(force=True)
-
-    arm.groupSystem()
-    arm.makeBlending()
-
-    arm.makeIkClavicle(chain=arm.ik_hier, rigGroup=arm.ik_group)
-    arm.create_deformation_chain()
-
-    arm.makeFkStretchSystem()
-    arm.makeIkStretchSystem()
-
-    arm.connectStretchSystem()
-    #
-    arm.collectTwistJoints(limbJoints=arm.inputChain[1:-1], index=5)
-    arm.makeTwistSystem()
-    #
-    arm.hideShapesCB()
-    arm.controlsVisibilitySetup()
-    # arm.clean()
-
-    return arm
 
 ###################################################################################################
 
 
 # IN MODULE TEST:
 if __name__ == '__main__':
-    loader()
+    tools.re_open_current_file()
+    # instance:
+    arm = Arm(armJoint=UPPERARM_JOINT, scaleFK=8)
+    arm.build(hand_join=HAND_JOINT)
     # arm.make_auto_fist(value=-20, force=True)
     cmds.select(clear=True)
+    # del arm
     pass
