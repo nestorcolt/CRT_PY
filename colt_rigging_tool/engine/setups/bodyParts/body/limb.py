@@ -132,12 +132,6 @@ class Limb(object):
         # create twist array to hold upper and lower twist chain
         self.twistSysArray = []
 
-        # swap orient values from jointO to rotate channels
-        mainJoints = self.inputChain[:]
-
-        for jnt in mainJoints:
-            tools.swapJointOrient(jnt)
-
     ###################################################################################################
     # clean objects no needed on scene after construction completes
 
@@ -181,9 +175,9 @@ class Limb(object):
         cmds.xform(fk_group, ws=True, m=cmds.xform(fk_hier[0], q=True, ws=True, m=True))
         cmds.parent(fk_hier[0], fk_group)
 
-        # swap orient values from jointO to rotate channels
-        for jnt in fk_hier:
-            tools.swapJointOrient(jnt)
+        # # # swap orient values from jointO to rotate channels
+        # for jnt in fk_hier:
+        #     tools.swapJointOrient(jnt)
 
         tools.overrideColor(fk_hier, 'green')
         cmds.select(clear=True)
@@ -264,18 +258,16 @@ class Limb(object):
             return
 
         ik_group = cmds.group(n=self.letter + '_' + self.prefix + '_IK_GRP', em=True)
+
+        # this returns a pymel object. get object.name()
         ik_main_jnt = tools.copySkeleton(self.inputChain[0], 'IK')
 
-        ik_hier = cmds.ls(sl=True)
-
-        cmds.select(ik_hier[0])
+        cmds.select(ik_main_jnt.name())
         cmds.select(hi=True)
-
         ik_hier = cmds.ls(sl=True)
 
         tools.overrideColor(ik_hier, 'red')
         cmds.select(clear=True)
-
         dummie_ik_aim = cmds.createNode("transform", n="dummie_ik_aim_node")
         cmds.delete(cmds.pointConstraint(ik_hier[-2], dummie_ik_aim))
 
@@ -284,27 +276,35 @@ class Limb(object):
         else:
             cmds.move(-45, dummie_ik_aim, moveZ=True, worldSpace=True, absolute=True)
 
-        #  set prefered angle first
+        # get previous angles from joint orient
+        joint_orient = map(lambda axis: cmds.getAttr("{}.jointOrient{}".format(ik_hier[-2], axis)),"XYZ")
+
+        #  set prefered angle
         cmds.delete(cmds.aimConstraint(dummie_ik_aim, ik_hier[-2]))
         cmds.joint(ik_hier[-2], edit=True, setPreferredAngles=True, children=False)
+
+
+        # back to previous angles
         cmds.joint(ik_hier[-2], edit=True, angleX="0deg", angleY="0deg", angleZ="0deg")
+        map(lambda axis, angle: cmds.setAttr("{}.jointOrient{}".format(ik_hier[-2], axis), angle),
+            "XYZ", joint_orient)
+
+        map(lambda axis, angle: cmds.setAttr("{}.preferredAngle{}".format(ik_hier[-2], axis), angle),
+            "XZ", (0,0) )
 
         # creates ik handle
         ik_handle = cmds.ikHandle(n=self.letter + '_' + self.prefix + '_ikh', solver='ikRPsolver',
                                   startJoint=ik_hier[-3], endEffector=ik_hier[-1])
-
         # create pole vector
         poleVec = control.Control(prefix=self.letter + '_' + self.prefix + '_poleVec', shape=4, scale=2)
 
         cmds.delete(cmds.pointConstraint([ik_hier[1], ik_hier[-1]], poleVec.root))
         cmds.delete(cmds.aimConstraint(ik_hier[2], poleVec.root, aim=(0.0, 0.0, 1.0)))
 
-        # check if joint T value is positive oor negative
-        if cmds.getAttr(ik_hier[2] + '.tx') < 0:
-            cmds.move(self.poleVector_distance , poleVec.root, moveZ=True, worldSpace=True, absolute=True)
-        elif cmds.getAttr(ik_hier[2] + '.tx') >= 0:
-            cmds.move(self.poleVector_distance * -1, poleVec.root, moveZ=True, worldSpace=True, absolute=True)
+        if self.positive_ik:
+            self.poleVector_distance = self.poleVector_distance * -1
 
+        cmds.move(self.poleVector_distance, poleVec.root, moveZ=True, worldSpace=True, absolute=True)
         cmds.delete(cmds.orientConstraint(ik_hier[2], poleVec.root))
 
         # set pole vector contranint
@@ -320,9 +320,9 @@ class Limb(object):
 
         cmds.parentConstraint(ik_control.control, ik_handle[0])
 
-        # swap orient values from jointO to rotate channels
-        for jnt in ik_hier:
-            tools.swapJointOrient(jnt)
+        # # swap orient values from jointO to rotate channels
+        # for jnt in ik_hier:
+        #     tools.swapJointOrient(jnt)
 
         # populate ik class properties
         self.ik_group = ik_group
@@ -369,7 +369,6 @@ class Limb(object):
         #
 
         mainRigJnt = self.inputChain[:]
-
         for idx in range(len(mainRigJnt)):
             const = cmds.orientConstraint([self.ik_hier[idx], self.fk_hier[idx]], mainRigJnt[idx])[0]
             cmds.setAttr(const + '.interpType', 0)

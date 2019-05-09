@@ -74,7 +74,7 @@ class Arm(limb.Limb):
 
         self.makeFK()
         self.makeIK()
-        
+        #
         if hand_join:
             self.makeHand(hand_joint=hand_join)
             self.make_auto_fist(force=True)
@@ -95,7 +95,7 @@ class Arm(limb.Limb):
         #
         self.hideShapesCB()
         self.controlsVisibilitySetup()
-        # self.clean()
+        self.clean()
 
         ######################################################################################################
 
@@ -290,12 +290,12 @@ class Arm(limb.Limb):
 
 
 # IN MODULE TEST:
-if __name__ == '__main__':
+# if __name__ == '__main__':
     tools.re_open_current_file()
     # instance:
-    arm = Arm(armJoint=UPPERARM_JOINT, scaleFK=8)
-    arm.build(hand_join=HAND_JOINT)
-    # arm.make_auto_fist(value=-20, force=True)
-    cmds.select(clear=True)
-    # del arm
-    pass
+arm = Arm(armJoint=UPPERARM_JOINT, scaleFK=8)
+arm.build(hand_join=HAND_JOINT)
+# arm.make_auto_fist(value=-20, force=True)
+cmds.select(clear=True)
+# del arm
+pass
