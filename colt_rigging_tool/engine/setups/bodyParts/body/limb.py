@@ -571,6 +571,7 @@ class Limb(object):
                     tools.swapJointOrient(itm)
 
                 grp = cmds.group(n=self.letter + '_' + self.prefix + '_' + jnt.split('_')[1] + '_twist_GRP', em=True)
+                # will align the twist parent to upper limb or lower limb
                 cmds.delete(cmds.parentConstraint(jnt, grp))
                 cmds.pointConstraint(jnt, grp)
                 cmds.parent(twist[0], grp)
@@ -583,7 +584,6 @@ class Limb(object):
                 twistJoints[jnt] = twist
 
         if len(twistJoints) > 0:
-            # print(twistJoints)
             self.twistSysArray = twistJoints
 
             return self.twistSysArray

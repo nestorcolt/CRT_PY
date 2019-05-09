@@ -214,9 +214,6 @@ class Arm(limb.Limb):
 
 @tools.undo_cmds
 def loader():
-    if cmds.objExists('l_leg_sys_GRP'):
-        # cmds.delete('l_leg_sys_GRP')
-        pass
 
     # delete unused nodes
     mel.eval('MLdeleteUnused;')
