@@ -146,23 +146,7 @@ class Limb(object):
         # TODO IMPLEMENT CLEAN METHOD
         pass
     
-    ###################################################################################################
-    # Hide shapes from channel box in for each control in leg system
 
-    @tools.undo_cmds
-    def hideShapesCB(self):
-
-        if self.checkFK:
-            # hide shapes of controls from channelbox
-            controls = self.fk_controls[:]
-            rawControls = [itm.control for itm in controls]
-            tools.hideShapesChannelBox(rawControls, exception=[self.attributeHolder])
-
-        if self.checkIK:
-            tools.hideShapesChannelBox([self.poleVector.control, self.ik_control.control, self.ik_clavicle_control.control], exception=[self.attributeHolder])
-
-        else:
-            cmds.warning('FK and IK system must be both created to hide shapes from controls in channelbox')
 
     ###################################################################################################
     # group evertyhing inside of a holder grp (lol grp grp grp)

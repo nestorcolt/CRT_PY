@@ -81,13 +81,14 @@ class Arm(limb.Limb):
     #
     def controlsVisibilitySetup(self):
         # note: the attribute holder is a pm.core node type
-        attrHolder = self.attributeHolder.name()
+        attrHolder = self.attributeHolder
         fkControls = [ctrl.control for ctrl in self.fk_controls]
         ikControls = [ctrl.control for ctrl in [self.ik_control, self.ik_clavicle_control, self.poleVector]]
         ikControls.append(self.poleVectorAttachLine)
 
         # call generic function from tools module
-        tools.makeControlsVisSetup(attrHolder=attrHolder, prefix=self.letter + '_' + self.prefix, controlsIK=ikControls, controlsFK=fkControls)
+        tools.makeControlsVisSetup(attrHolder=attrHolder, prefix=self.letter + '_' + self.prefix,
+                                   controlsIK=ikControls, controlsFK=fkControls)
 
     ######################################################################################################
 
@@ -208,6 +209,25 @@ class Arm(limb.Limb):
                 except:
                     pass
 
+    ###################################################################################################
+    # Hide shapes from channel box in for each control in leg system
+
+    @tools.undo_cmds
+    def hideShapesCB(self):
+
+        if self.checkFK:
+            # hide shapes of controls from channelbox
+            controls = self.fk_controls[:]
+            rawControls = [itm.control for itm in controls]
+            tools.hideShapesChannelBox(rawControls, exception=[self.attributeHolder])
+
+        if self.checkIK:
+            tools.hideShapesChannelBox([self.poleVector.control, self.ik_control.control,
+                                        self.ik_clavicle_control.control, self.attributeHolder])
+
+        else:
+            cmds.warning('FK and IK system must be both created to hide shapes from controls in channelbox')
+
 ###################################################################################################
 # builder function to keep class instances inside of a function and not in global
 
@@ -241,8 +261,8 @@ def loader():
     arm.collectTwistJoints(limbJoints=arm.inputChain[1:-1], index=5)
     arm.makeTwistSystem()
     #
-    # arm.hideShapesCB()
-    # arm.controlsVisibilitySetup()
+    arm.hideShapesCB()
+    arm.controlsVisibilitySetup()
     # arm.clean()
 
     return arm
