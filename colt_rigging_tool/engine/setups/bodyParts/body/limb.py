@@ -45,11 +45,9 @@ class Limb(object):
         self.scale = scale
         self.scaleFK = scaleFK
 
-        # clavicle joint
-        self.clavicle = cmds.listRelatives(firstJoint, p=True)[0]
 
         # List joint chain from leg
-        self.shortChain = tools.list_joint_hier(firstJoint)
+        self.inputChain = tools.list_joint_hier(firstJoint)
 
 
         # INIT VARS FOR FK AND IK SYSTEM
@@ -81,7 +79,7 @@ class Limb(object):
         self.poleVectorAttachLine = None
         self.attachLineGrp = None
         self.ik_control = None
-        self.ik_clavicle_control = None
+
 
         # hand controls
         self.handTopCtrl = None
@@ -99,10 +97,9 @@ class Limb(object):
         #
 
         # holder group for main chain Init
-        self.main_grp = cmds.group(name=self.letter + '_' + prefix + '_main_grp', em=True)
-        cmds.xform(self.main_grp, ws=True, m=cmds.xform(self.clavicle, q=True, ws=True, m=True))
 
-        cmds.parent(self.clavicle, self.main_grp)
+        self.main_grp = cmds.group(name=self.letter + '_' + prefix + '_main_grp', em=True)
+        cmds.parent(self.inputChain[0], self.main_grp)
         cmds.parent(self.main_grp, self.limb_main_grp)
 
         ######################################################################################################
@@ -111,7 +108,7 @@ class Limb(object):
         self.attributeHolder_obj = pm.circle(n=self.letter + '_' + self.prefix + '_UI_CTL')[0]
         self.attributeHolder = self.attributeHolder_obj.name()
         cb_attrs = self.attributeHolder_obj.listAttr(k=True)
-        cmds.parentConstraint(self.shortChain[-1], self.attributeHolder)
+        cmds.parentConstraint(self.inputChain[-1], self.attributeHolder)
         cmds.parent(self.attributeHolder, self.limb_main_grp)
 
         tools.overrideColor(self.attributeHolder, "red", single=True)
@@ -136,8 +133,7 @@ class Limb(object):
         self.twistSysArray = []
 
         # swap orient values from jointO to rotate channels
-        mainJoints = self.shortChain[:]
-        mainJoints.insert(0, self.clavicle)
+        mainJoints = self.inputChain[:]
 
         for jnt in mainJoints:
             tools.swapJointOrient(jnt)
@@ -194,7 +190,7 @@ class Limb(object):
             return
 
         fk_group = cmds.group(n=self.letter + '_' + self.prefix + '_FK_GRP', em=True)
-        fk_main_jnt = tools.copySkeleton(self.clavicle, 'FK')
+        fk_main_jnt = tools.copySkeleton(self.inputChain[0], 'FK')
         fk_hier = cmds.ls(sl=True)
 
         # xform main ik group
@@ -271,8 +267,6 @@ class Limb(object):
         self.checkFK = True
         #
         #
-
-
         return {'fk_group': fk_group, 'fk_hier': fk_hier, 'fk_controls': fk_controls}
 
     ###################################################################################################
@@ -286,7 +280,7 @@ class Limb(object):
             return
 
         ik_group = cmds.group(n=self.letter + '_' + self.prefix + '_IK_GRP', em=True)
-        ik_main_jnt = tools.copySkeleton(self.clavicle, 'IK')
+        ik_main_jnt = tools.copySkeleton(self.inputChain[0], 'IK')
 
         ik_hier = cmds.ls(sl=True)
 
@@ -295,17 +289,15 @@ class Limb(object):
 
         ik_hier = cmds.ls(sl=True)
 
-        # xform main ik group
-        cmds.xform(ik_group, ws=True, m=cmds.xform(ik_hier[0], q=True, ws=True, m=True))
-
         tools.overrideColor(ik_hier, 'red')
         cmds.select(clear=True)
 
         #  set prefered angle first
-        cmds.joint(ik_hier[0], edit=True, setPreferredAngles=True, ch=True)
+        cmds.joint(ik_hier[-3], edit=True, setPreferredAngles=True, ch=True)
 
         # creates ik handle
-        ik_handle = cmds.ikHandle(n=self.letter + '_' + self.prefix + '_ikh', solver='ikRPsolver', startJoint=ik_hier[1], endEffector=ik_hier[-1])
+        ik_handle = cmds.ikHandle(n=self.letter + '_' + self.prefix + '_ikh', solver='ikRPsolver',
+                                  startJoint=ik_hier[1], endEffector=ik_hier[-1])
 
         # create pole vector
         poleVec = control.Control(prefix=self.letter + '_' + self.prefix + '_poleVec', shape=4, scale=2)
@@ -333,18 +325,7 @@ class Limb(object):
                                      translateTo=ik_hier[-1], rotateTo=ik_hier[-1], scale=self.scale * 6)
         cmds.parentConstraint(ik_control.control, ik_handle[0])
 
-        # IK clavicle control
-        clavNameCtrl = tools.remove_suffix(ik_main_jnt)
-        ik_clavicleControl = control.Control(prefix=clavNameCtrl + '_IK', shape=4, translateTo=ik_hier[0],
-                                             rotateTo=ik_hier[0], scale=self.scale)
 
-        if cmds.getAttr(ik_hier[0] + '.tx') >= 0:
-            cmds.move(10, ik_clavicleControl.control + "*Shape" + ".cv[*]", moveZ=True, absolute=True)
-        elif cmds.getAttr(ik_hier[0] + '.tx') < 0:
-            cmds.move(10, ik_clavicleControl.control + "*Shape" + ".cv[*]", moveZ=True, absolute=True)
-
-        cmds.parent(ik_hier[0], ik_clavicleControl.control)
-        cmds.parent(ik_clavicleControl.root, ik_group)
 
         # swap orient values from jointO to rotate channels
         for jnt in ik_hier:
@@ -356,7 +337,6 @@ class Limb(object):
         self.ik_hier = ik_hier
         self.poleVector = poleVec
         self.ik_control = ik_control
-        self.ik_clavicle_control = ik_clavicleControl
 
         # create pole vector attach line
         self.poleVectorAttachLine = tools.makePoleVectorLine(name=self.letter + '_' + self.prefix,
@@ -394,8 +374,7 @@ class Limb(object):
             pm.addAttr(holderShape, k=True, shortName='IKFK', longName='IK_0_FK_1', defaultValue=0, minValue=0, maxValue=1)
         #
 
-        mainRigJnt = self.shortChain[:]
-        mainRigJnt.insert(0, self.clavicle)
+        mainRigJnt = self.inputChain[:]
 
         for idx in range(len(mainRigJnt)):
             const = cmds.orientConstraint([self.ik_hier[idx], self.fk_hier[idx]], mainRigJnt[idx])[0]
@@ -430,7 +409,7 @@ class Limb(object):
             return
 
         # collect data:
-        attHolder = cmds.ls(self.attributeHolder.split('|')[1])[0]
+        attHolder = self.attributeHolder
 
         #
         # make FK Stretch
@@ -441,13 +420,13 @@ class Limb(object):
         fk_multiDiv = cmds.createNode('multiplyDivide', n=self.letter + '_' + self.prefix + '_multiDiv_fkStretch')
 
         # set attribute for plus minus average
-        cmds.setAttr(fk_plusMinus + '.input2D[1].input2Dx', cmds.getAttr(self.shortChain[1] + '.tx'))
-        cmds.setAttr(fk_plusMinus + '.input2D[1].input2Dy', cmds.getAttr(self.shortChain[2] + '.tx'))
+        cmds.setAttr(fk_plusMinus + '.input2D[1].input2Dx', cmds.getAttr(self.inputChain[-2] + '.tx'))
+        cmds.setAttr(fk_plusMinus + '.input2D[1].input2Dy', cmds.getAttr(self.inputChain[-1] + '.tx'))
 
         # connect multiply divide
         cmds.setAttr(fk_multiDiv + '.operation', 1)
 
-        if cmds.getAttr(self.shortChain[1] + '.tx') < 0:
+        if cmds.getAttr(self.inputChain[-2] + '.tx') < 0:
             cmds.setAttr(fk_multiDiv + '.input2X', -1)
             cmds.setAttr(fk_multiDiv + '.input2Y', -1)
         else:
@@ -542,7 +521,7 @@ class Limb(object):
     def connectStretchSystem(self):
 
         # Collect data:
-        attHolder = cmds.ls(self.attributeHolder.split('|')[1])[0]
+        attHolder = self.attributeHolder
         condition = self.IKFKStretchConditionNode
         ik_node = self.IKStretchNode
         fk_node = self.FKStretchNode
@@ -552,11 +531,11 @@ class Limb(object):
         runner = False
 
         if connection is not None:
-            runner = any([itm for itm in connection if itm in self.shortChain])
+            runner = any([itm for itm in connection if itm in self.inputChain])
 
         if not runner:
-            cmds.connectAttr(condition + '.outColorR', self.shortChain[1] + '.translateX', f=True)
-            cmds.connectAttr(condition + '.outColorG', self.shortChain[2] + '.translateX', f=True)
+            cmds.connectAttr(condition + '.outColorR', self.inputChain[-2] + '.translateX', f=True)
+            cmds.connectAttr(condition + '.outColorG', self.inputChain[-1] + '.translateX', f=True)
 
             # connect attribute holder to condition
             cmds.connectAttr(attHolder + '.IK_0_FK_1', condition + '.firstTerm', f=True)
@@ -596,7 +575,7 @@ class Limb(object):
                 cmds.pointConstraint(jnt, grp)
                 cmds.parent(twist[0], grp)
                 cmds.parent(grp, self.limb_main_grp)
-
+                #
                 for ch in 'XYZ':
                     cmds.setAttr(twist[0] + '.jointOrient%s' % ch, 0)
                     cmds.setAttr(twist[0] + '.rotate%s' % ch, 0)
@@ -619,13 +598,14 @@ class Limb(object):
             cmds.warning('No twist joints found on structure')
             return
 
-        for itm in self.shortChain:
+        for itm in self.inputChain[1:]:
             twistData = self.twistSysArray.get(itm, None)
 
             if twistData is not None:
                 TD = twistData
                 # create Ik from twist[0] to twist[1] and reset PV values
-                handle = cmds.ikHandle(n='_'.join(TD[0].split('_')[:2]) + '_twist_ikh', solver='ikRPsolver', startJoint=TD[0], endEffector=TD[1])[0]
+                handle = cmds.ikHandle(n='_'.join(TD[0].split('_')[:2]) + '_twist_ikh', solver='ikRPsolver',
+                                       startJoint=TD[0], endEffector=TD[1])[0]
                 for ch in 'XYZ':
                     cmds.setAttr('{}.poleVector{}'.format(handle, ch), 0)
 
@@ -650,52 +630,40 @@ class Limb(object):
                 cmds.setAttr(multiplyNodeStretch + '.input2X', factor)
 
                 # condition that check if limb twist is upper or lower area
-                if self.shortChain.index(itm) == 0:
+                if itm == self.inputChain[-3]:
                     # create reference node
                     ref_node = cmds.createNode('transform', n='_'.join(TD[0].split('_')[:2]) + '_twist_reference')
                     cmds.delete(cmds.parentConstraint(TD[0], ref_node))
 
-                    cmds.orientConstraint(self.shortChain[0], ref_node, skip=['y', 'z'])
+                    cmds.orientConstraint(self.inputChain[-3], ref_node, skip=['y', 'z'])
                     cmds.parent(ref_node, TD[0])
 
                     cmds.connectAttr(ref_node + '.rotateX', multiplyNode + '.input1.input1X', force=True)
 
                     # divide scale or stretch
-                    cmds.connectAttr(self.shortChain[1] + '.translateX', multiplyNodeStretch + '.input1.input1X', f=True)
+                    cmds.connectAttr(self.inputChain[-2] + '.translateX', multiplyNodeStretch + '.input1.input1X', f=True)
 
                     for idx in range(1, factor + 1):
                         cmds.connectAttr(multiplyNode + '.outputX', TD[idx] + '.rotateX', f=True)
                         cmds.connectAttr(multiplyNodeStretch + '.outputX', TD[idx] + '.translateX', f=True)
 
-                elif self.shortChain.index(itm) == 1:
+                elif itm == self.inputChain[-2]:
 
                     ref_lower_limb = cmds.createNode('transform', n='_'.join(TD[0].split('_')[:2]) + '_twist_lowerRef')
                     cmds.delete(cmds.parentConstraint(TD[-1], ref_lower_limb))
                     cmds.parent(ref_lower_limb, TD[0])
 
-                    cmds.orientConstraint(self.shortChain[-1], ref_lower_limb, mo=True, skip=['y', 'z'])
+                    cmds.orientConstraint(self.inputChain[-1], ref_lower_limb, mo=True, skip=['y', 'z'])
                     cmds.connectAttr(ref_lower_limb + '.rotateX', multiplyNode + '.input1.input1X', force=True)
 
                     # divide scale or stretch
-                    cmds.connectAttr(self.shortChain[2] + '.translateX', multiplyNodeStretch + '.input1.input1X', f=True)
+                    cmds.connectAttr(self.inputChain[-1] + '.translateX', multiplyNodeStretch + '.input1.input1X', f=True)
 
                     for idx in range(1, factor + 1):
                         cmds.connectAttr(multiplyNode + '.outputX', TD[idx] + '.rotateX', f=True)
                         cmds.connectAttr(multiplyNodeStretch + '.outputX', TD[idx] + '.translateX', f=True)
 
 
-    ###################################################################################################
-    # creates the system for controls visibility IK FK or both
-    #
-    def controlsVisibilitySetup(self):
-        # note: the attribute holder is a pm.core node type
-        attrHolder = self.attributeHolder.name()
-        fkControls = [ctrl.control for ctrl in self.fk_controls]
-        ikControls = [ctrl.control for ctrl in [self.ik_control, self.ik_clavicle_control, self.poleVector]]
-        ikControls.append(self.poleVectorAttachLine)
-
-        # call generic function from tools module
-        tools.makeControlsVisSetup(attrHolder=attrHolder, prefix=self.letter + '_' + self.prefix, controlsIK=ikControls, controlsFK=fkControls)
 
     ######################################################################################################
 

@@ -12,7 +12,7 @@ reload(limb)
 
 ###################################################################################################
 # GLOBALS:
-UPPERARM_JOINT = 'L_upperArm_JNT'
+UPPERARM_JOINT = 'L_clavicle_JNT'
 
 ###################################################################################################
 """
@@ -52,6 +52,42 @@ class Arm(limb.Limb):
                  scaleFK=scaleFK,
                  controlAngle=controlAngle,
                  pole_vector_distance = pole_vector_distance)
+
+        # PROPERTIES
+
+        self.ik_clavicle_control = None
+
+        ######################################################################################################
+
+    def makeIkClavicle(self, chain=[], rigGroup=""):
+        # IK clavicle control
+        clavNameCtrl = tools.remove_suffix(chain[0])
+        ik_clavicleControl = control.Control(prefix=clavNameCtrl + '_IK', shape=4, translateTo=chain[0],
+                                             rotateTo=chain[0], scale=self.scale)
+
+        if cmds.getAttr(chain[0] + '.tx') >= 0:
+            cmds.move(10, ik_clavicleControl.control + "*Shape" + ".cv[*]", moveZ=True, absolute=True)
+        elif cmds.getAttr(chain[0] + '.tx') < 0:
+            cmds.move(10, ik_clavicleControl.control + "*Shape" + ".cv[*]", moveZ=True, absolute=True)
+
+        cmds.parent(chain[0], ik_clavicleControl.control)
+        cmds.parent(ik_clavicleControl.root, rigGroup)
+
+        self.ik_clavicle_control = ik_clavicleControl
+
+
+    ###################################################################################################
+    # creates the system for controls visibility IK FK or both
+    #
+    def controlsVisibilitySetup(self):
+        # note: the attribute holder is a pm.core node type
+        attrHolder = self.attributeHolder.name()
+        fkControls = [ctrl.control for ctrl in self.fk_controls]
+        ikControls = [ctrl.control for ctrl in [self.ik_control, self.ik_clavicle_control, self.poleVector]]
+        ikControls.append(self.poleVectorAttachLine)
+
+        # call generic function from tools module
+        tools.makeControlsVisSetup(attrHolder=attrHolder, prefix=self.letter + '_' + self.prefix, controlsIK=ikControls, controlsFK=fkControls)
 
     ######################################################################################################
 
@@ -197,15 +233,16 @@ def loader():
     arm.groupSystem()
     arm.makeBlending()
 
+    arm.makeIkClavicle(chain=arm.ik_hier, rigGroup=arm.ik_group)
     arm.create_deformation_chain()
 
-    # arm.makeFkStretchSystem()
-    # arm.makeIkStretchSystem()
+    arm.makeFkStretchSystem()
+    arm.makeIkStretchSystem()
 
-    # arm.connectStretchSystem()
+    arm.connectStretchSystem()
     #
-    # arm.collectTwistJoints(arm.shortChain[:-1], index=5)
-    # arm.makeTwistSystem()
+    arm.collectTwistJoints(limbJoints=arm.inputChain[1:-1], index=5)
+    arm.makeTwistSystem()
     #
     # arm.hideShapesCB()
     # arm.controlsVisibilitySetup()
