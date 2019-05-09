@@ -29,7 +29,8 @@ class Limb(object):
                  scaleIK=1.0,
                  scaleFK=1.0,
                  controlAngle=30,
-                 pole_vector_distance = 60):
+                 pole_vector_distance = 60,
+                 postive_ik=True):
 
         print(
             """
@@ -62,6 +63,7 @@ class Limb(object):
         self.fk_group = None
         self.fk_hier = None
         self.fk_controls = None
+        self.positive_ik = postive_ik
 
         # IK VARS
         # check if ik system exist
@@ -81,17 +83,15 @@ class Limb(object):
         self.ik_control = None
 
 
-        # hand controls
-        self.handTopCtrl = None
-        self.fingers = None
-        self.fingers_auto_dic = None
-        #
+
 
         self.checkBlend = False
 
         #
         # holder group Init
         self.limb_main_grp = cmds.group(name=self.letter + '_' + prefix + '_rig_GRP', em=True)
+        self.limb_modules_groups = []
+        self.limb_modules_groups.append(self.limb_main_grp)
 
         #
         #
@@ -276,12 +276,22 @@ class Limb(object):
         tools.overrideColor(ik_hier, 'red')
         cmds.select(clear=True)
 
+        dummie_ik_aim = cmds.createNode("transform", n="dummie_ik_aim_node")
+        cmds.delete(cmds.pointConstraint(ik_hier[-2], dummie_ik_aim))
+
+        if self.positive_ik:
+            cmds.move(45, dummie_ik_aim, moveZ=True, worldSpace=True, absolute= True)
+        else:
+            cmds.move(-45, dummie_ik_aim, moveZ=True, worldSpace=True, absolute=True)
+
         #  set prefered angle first
-        cmds.joint(ik_hier[-3], edit=True, setPreferredAngles=True, ch=True)
+        cmds.delete(cmds.aimConstraint(dummie_ik_aim, ik_hier[-2]))
+        cmds.joint(ik_hier[-2], edit=True, setPreferredAngles=True, children=False)
+        cmds.joint(ik_hier[-2], edit=True, angleX="0deg", angleY="0deg", angleZ="0deg")
 
         # creates ik handle
         ik_handle = cmds.ikHandle(n=self.letter + '_' + self.prefix + '_ikh', solver='ikRPsolver',
-                                  startJoint=ik_hier[1], endEffector=ik_hier[-1])
+                                  startJoint=ik_hier[-3], endEffector=ik_hier[-1])
 
         # create pole vector
         poleVec = control.Control(prefix=self.letter + '_' + self.prefix + '_poleVec', shape=4, scale=2)
@@ -307,9 +317,8 @@ class Limb(object):
         # create IK control
         ik_control = control.Control(prefix=self.letter + '_' + self.prefix + '_IK', shape=2, angle='x',
                                      translateTo=ik_hier[-1], rotateTo=ik_hier[-1], scale=self.scale * 6)
+
         cmds.parentConstraint(ik_control.control, ik_handle[0])
-
-
 
         # swap orient values from jointO to rotate channels
         for jnt in ik_hier:
@@ -334,6 +343,7 @@ class Limb(object):
 
         # set orient const to ik control to hand or wrist
         cmds.orientConstraint(ik_control.control, ik_hier[-1])
+        cmds.delete(dummie_ik_aim)
 
         return {'ik_group': ik_group, 'ik_handle': ik_handle, 'ik_hier': ik_hier, 'poleVector': poleVec}
 
@@ -652,6 +662,7 @@ class Limb(object):
     ######################################################################################################
 
     def create_deformation_chain(self):
-        tools.create_deformation_joints_for_module(self.limb_main_grp)
+        for module in self.limb_modules_groups:
+            tools.create_deformation_joints_for_module(module)
 
 ######################################################################################################

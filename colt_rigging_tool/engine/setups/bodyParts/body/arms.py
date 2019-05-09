@@ -13,6 +13,7 @@ reload(limb)
 ###################################################################################################
 # GLOBALS:
 UPPERARM_JOINT = 'L_clavicle_JNT'
+HAND_JOINT = "L_hand_JNT"
 
 ###################################################################################################
 """
@@ -57,6 +58,18 @@ class Arm(limb.Limb):
 
         self.ik_clavicle_control = None
 
+        # hand controls
+        self.handTopCtrl = None
+        self.fingers = None
+        self.fingers_auto_dic = None
+
+        # unparentHandFromSystem
+        self.hand = {}
+        self.hand_module_grp = None
+
+        # print(self.hand)
+
+        #
         ######################################################################################################
 
     def makeIkClavicle(self, chain=[], rigGroup=""):
@@ -92,24 +105,36 @@ class Arm(limb.Limb):
 
     ######################################################################################################
 
-    def makeHand(self):
+    def makeHand(self, hand_joint = ""):
 
-        hand = self.hand.values()[0]
+        if not hand_joint:
+            return
+
+        self.hand[self.inputChain[-1]] = cmds.listRelatives(hand_joint, ad=True)
+        #
+        hand = hand_joint
         handName = tools.remove_suffix(hand)
-        handGrp = cmds.group(n=handName + '_GRP', em=True)
+        handGrp = cmds.group(n=handName + '_rig_GRP', em=True)
+        hand_control_grp = cmds.group(n=handName + '_controls_GRP', em=True)
+        #
         cmds.delete(cmds.parentConstraint(hand, handGrp))
+        cmds.delete(cmds.parentConstraint(hand, hand_control_grp))
 
-        topControl = control.Control(prefix=handName + '_auto', translateTo=hand, rotateTo=hand,
+        topControl = control.Control(prefix=handName + '_UI', translateTo=hand, rotateTo=hand,
                                      shape=4, scale=self.scale * 2, lockChannels=['t', 'r', 's', 'v'])
+
+        cmds.parentConstraint(hand_joint, topControl.root, mo=True)
+
         tools.hideShapesChannelBox([topControl.control])
 
         # check X value
         child = cmds.listRelatives(hand)[0]
         value = cmds.getAttr(child + '.tx')
+        #
         if value >= 0:
-            cmds.move(8, 2, 0, topControl.root, relative=True, objectSpace=True)
+            cmds.move(4, 3, 0, topControl.root, relative=True, objectSpace=True)
         else:
-            cmds.move(-8, -2, 0, topControl.root, relative=True, objectSpace=True)
+            cmds.move(-4, -3, 0, topControl.root, relative=True, objectSpace=True)
 
         # flatten shape
         shapes = cmds.listRelatives(topControl.control, shapes=True)
@@ -120,9 +145,7 @@ class Arm(limb.Limb):
                 cmds.setAttr(itm + '.controlPoints[%d].yValue' % vt, 0)
 
         #
-        handJoints = [itm for itm in cmds.listRelatives(hand, ad=True)
-                      if cmds.listRelatives(itm) is not None and cmds.listRelatives(itm, p=True)[0] != hand]
-
+        handJoints = tools.list_joint_hier(hand_joint, with_end_joints=False)[1:]
         controlsArray = []
 
         for jnt in handJoints:
@@ -132,24 +155,25 @@ class Arm(limb.Limb):
             controlsArray.append(ctrl)
 
         for idx, (ctrl, jnt) in enumerate(zip(controlsArray, handJoints)):
-
-            parent = cmds.listRelatives(cmds.listRelatives(jnt, p=True)[0], p=True)[0]
-            if parent != hand:
+            #
+            parent = cmds.listRelatives(jnt, p=True)[0]
+            if parent != hand_joint:
                 try:
-                    cmds.parent(ctrl.root, controlsArray[idx + 1].control)
+                    cmds.parent(ctrl.root, controlsArray[idx - 1].control)
                 except:
                     pass
             else:
-                cmds.parent(ctrl.root, handGrp)
+                cmds.parent(ctrl.root, hand_control_grp)
 
         # parenting hand controls group to general limb group
-        cmds.parentConstraint(hand, handGrp)
-        cmds.parent(handGrp, self.limb_main_grp)
-        # parent top ctrl to hand joint
-        cmds.parent(topControl.root, hand)
+        cmds.parentConstraint(hand_control_grp, hand_joint, mo=True)
+        cmds.parentConstraint(self.inputChain[-1], hand_control_grp, mo=True)
+        #
+        cmds.parent(hand_joint, handGrp)
 
         self.handTopCtrl = topControl
         self.fingers = controlsArray
+        self.hand_module_grp = handGrp
 
         # make hand float attributes for channel box setting
 
@@ -173,6 +197,7 @@ class Arm(limb.Limb):
             cmds.connectAttr(topControl.control + '.showControls', shape + '.visibility', f=True)
 
         self.fingers_auto_dic = auto_fist
+        self.limb_modules_groups.append(self.hand_module_grp)
 
     ###################################################################################################
     # create the slider float controls over the hand top control
@@ -244,8 +269,8 @@ def loader():
     arm.makeFK()
     arm.makeIK()
 
-    # arm.makeHand()
-    # arm.make_auto_fist(force=True)
+    arm.makeHand(hand_joint=HAND_JOINT)
+    arm.make_auto_fist(force=True)
 
     arm.groupSystem()
     arm.makeBlending()
@@ -272,7 +297,7 @@ def loader():
 
 # IN MODULE TEST:
 if __name__ == '__main__':
-    arm = loader()
+    loader()
     # arm.make_auto_fist(value=-20, force=True)
     cmds.select(clear=True)
     pass

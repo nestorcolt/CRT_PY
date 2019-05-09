@@ -31,17 +31,21 @@ def list_joint_hier(top_joint, with_end_joints=True):
 
     if not with_end_joints:
         for jnt in complete_joints:
-            if not '_end_' in jnt[:]:
+            if mc.listRelatives(jnt):
                 no_ends.append(jnt)
-            elif '_end_' in jnt[:]:
-                break
+            #
+            elif not mc.listRelatives(jnt):
+                continue
+
         return no_ends
 
     else:
         for jnt in complete_joints:
             chain.append(jnt)
-            if '_end_' in jnt[:]:
-                break
+            #
+            if not mc.listRelatives(jnt):
+                continue
+
         return chain
 
 
@@ -511,6 +515,7 @@ def get_last_file_version(path_to, file_name, incremental=False):
 def create_deformation_joints_for_module(module=None):
     relative_joints = [itm for itm in mc.listRelatives(module, ad=True, type="joint")
                        if "FK" not in itm and  "IK" not in itm]
+
     skell_grp_name = module.replace("_rig_", "_skell_")
     skell_grp = mc.createNode("transform", n=skell_grp_name)
     #
@@ -525,10 +530,12 @@ def create_deformation_joints_for_module(module=None):
 
 BUILDER_SCENE_PATH = r"C:\Users\colt-desk\Desktop\Salle\2019\Abril\II entrega\mech_project\data\builder\builder"
 if __name__ == '__main__':
+    # list_joint_hier(top_joint="L_hand_JNT", with_end_joints=True)
     # print getSideLetter(mc.ls(sl=True)[0])
     # swapJointOrient('l_upperleg_rig')
     # makeTwistJoints('l_lowerleg_rig', 5)
     # print(copySkeleton('hips_jnt', 'rig'))
-    latest_builder = get_last_file_version(BUILDER_SCENE_PATH, "builder_001", incremental=False)
+    # create_deformation_joints_for_module("L_hand_rig_GRP")
+    # latest_builder = get_last_file_version(BUILDER_SCENE_PATH, "builder_001", incremental=False)
 
     pass
