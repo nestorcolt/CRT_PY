@@ -23,21 +23,14 @@ class Limb(object):
 
     def __init__(self,
                  firstJoint='',
-                 name='armClass',
+                 name='limbClass',
                  prefix='arm',
                  scale=1.0,
                  scaleIK=1.0,
                  scaleFK=1.0,
                  controlAngle=30,
                  pole_vector_distance = 60,
-                 postive_ik=True):
-
-        print(
-            """
-                Description: arm class to build complex stretch ik fk arms system on humanoid character
-                ARM must have 3 joints: "upperARM to end".
-            """
-        )
+                 positive_ik=True):
 
         # public member
         self.letter = tools.getSideLetter(firstJoint)
@@ -46,10 +39,8 @@ class Limb(object):
         self.scale = scale
         self.scaleFK = scaleFK
 
-
         # List joint chain from leg
         self.inputChain = tools.list_joint_hier(firstJoint)
-
 
         # INIT VARS FOR FK AND IK SYSTEM
         # FK VARS
@@ -63,7 +54,7 @@ class Limb(object):
         self.fk_group = None
         self.fk_hier = None
         self.fk_controls = None
-        self.positive_ik = postive_ik
+        self.positive_ik = positive_ik
 
         # IK VARS
         # check if ik system exist
@@ -81,10 +72,6 @@ class Limb(object):
         self.poleVectorAttachLine = None
         self.attachLineGrp = None
         self.ik_control = None
-
-
-
-
         self.checkBlend = False
 
         #
@@ -93,11 +80,7 @@ class Limb(object):
         self.limb_modules_groups = []
         self.limb_modules_groups.append(self.limb_main_grp)
 
-        #
-        #
-
         # holder group for main chain Init
-
         self.main_grp = cmds.group(name=self.letter + '_' + prefix + '_main_grp', em=True)
         cmds.parent(self.inputChain[0], self.main_grp)
         cmds.parent(self.main_grp, self.limb_main_grp)
@@ -159,7 +142,6 @@ class Limb(object):
     ###################################################################################################
     # Build Fk Chain
     #
-
     @tools.undo_cmds
     def makeFK(self, simple_fk=False):
 
@@ -174,11 +156,6 @@ class Limb(object):
         # xform main ik group
         cmds.xform(fk_group, ws=True, m=cmds.xform(fk_hier[0], q=True, ws=True, m=True))
         cmds.parent(fk_hier[0], fk_group)
-
-        # # # swap orient values from jointO to rotate channels
-        # for jnt in fk_hier:
-        #     tools.swapJointOrient(jnt)
-
         tools.overrideColor(fk_hier, 'green')
         cmds.select(clear=True)
         fk_hier.reverse()
@@ -235,10 +212,6 @@ class Limb(object):
         # reverse arrays again to math order upside down
         fk_hier.reverse()
 
-        # parent to general fk leg system group
-        # cmds.parent(fk_controls[0].root, fk_group) # TODO parent FK Controls root to system if available assetRigNode
-
-
         # populate class fk properties
         self.fk_group = fk_group
         self.fk_hier = fk_hier
@@ -252,7 +225,7 @@ class Limb(object):
 
     ###################################################################################################
     # Build IK chain
-
+    #
     @tools.undo_cmds
     def makeIK(self):
 
@@ -327,10 +300,6 @@ class Limb(object):
         cmds.parentConstraint(ik_control.control, ik_handle[0])
         cmds.parent(ik_main_jnt.name(), ik_group)
 
-        # # swap orient values from jointO to rotate channels
-        # for jnt in ik_hier:
-        #     tools.swapJointOrient(jnt)
-
         # populate ik class properties
         self.ik_group = ik_group
         self.ik_handle = ik_handle[0]
@@ -374,7 +343,6 @@ class Limb(object):
         if not pm.attributeQuery('IK_0_FK_1', node=holderShape, exists=True):
             pm.addAttr(holderShape, k=True, shortName='IKFK', longName='IK_0_FK_1', defaultValue=0, minValue=0, maxValue=1)
         #
-
         mainRigJnt = self.inputChain[:]
         for idx in range(len(mainRigJnt)):
             const = cmds.parentConstraint([self.ik_hier[idx], self.fk_hier[idx]], mainRigJnt[idx])[0]
@@ -475,9 +443,8 @@ class Limb(object):
         cmds.parentConstraint(handle, dummy_B)
         cmds.parent(dummy_B, topGrp)
 
-        #
-        # make IK Stretch
 
+        # make IK Stretch
         ik_distBetween = cmds.createNode('distanceBetween', n=self.letter + '_' + self.prefix + '_distanceBetween_ikStretch')
         ik_condition = cmds.createNode('condition', n=self.letter + '_' + self.prefix + '_condition_ikStretch')
         ik_multiDiv_A = cmds.createNode('multiplyDivide', n=self.letter + '_' + self.prefix + '_multiDiv_ikStretch_A')
@@ -618,7 +585,6 @@ class Limb(object):
                 cmds.parentConstraint(itm, handle)
                 cmds.parent(handle, cmds.listRelatives(TD[0], parent=True)[0])
 
-
                 # null vars
                 ref_node = None
                 ref_lower_limb = None
@@ -669,7 +635,6 @@ class Limb(object):
                     for idx in range(1, factor + 1):
                         cmds.connectAttr(multiplyNode + '.outputX', TD[idx] + '.rotateX', f=True)
                         cmds.connectAttr(multiplyNodeStretch + '.outputX', TD[idx] + '.translateX', f=True)
-
 
 
     ######################################################################################################

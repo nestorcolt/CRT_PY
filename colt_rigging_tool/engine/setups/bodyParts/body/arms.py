@@ -12,8 +12,8 @@ reload(limb)
 
 ###################################################################################################
 # GLOBALS:
-UPPERARM_JOINT = 'R_clavicle_JNT'
-HAND_JOINT = "R_hand_JNT"
+UPPERARM_JOINT = 'L_clavicle_JNT'
+HAND_JOINT = "L_hand_JNT"
 
 ###################################################################################################
 """
@@ -72,31 +72,31 @@ class Arm(limb.Limb):
     def build(self, hand_join="", twist_chain_len=5):
 
         self.makeFK()
-        self.makeIK()
+        # self.makeIK()
 
-        self.groupSystem()
-        self.makeBlending()
+        # self.groupSystem()
+        # self.makeBlending()
 
-        self.makeIkClavicle(chain=self.ik_hier, rigGroup=self.ik_group)
-        self.create_deformation_chain()
-
-        self.makeFkStretchSystem()
-        self.makeIkStretchSystem()
-
-        self.connectStretchSystem()
+        # self.makeIkClavicle(chain=self.ik_hier, rigGroup=self.ik_group)
+        # self.create_deformation_chain()
         #
-        self.collectTwistJoints(limbJoints=self.inputChain[1:-1], index=twist_chain_len)
-        self.makeTwistSystem()
-
+        # self.makeFkStretchSystem()
+        # self.makeIkStretchSystem()
         #
-        if hand_join:
-            self.makeHand(hand_joint=hand_join)
-            # self.make_auto_fist(force=True)
-            pass
+        # self.connectStretchSystem()
+        # #
+        # self.collectTwistJoints(limbJoints=self.inputChain[1:-1], index=twist_chain_len)
+        # self.makeTwistSystem()
         #
-        self.hideShapesCB()
-        self.controlsVisibilitySetup()
-        self.clean()
+        # #
+        # if hand_join:
+        #     self.makeHand(hand_joint=hand_join)
+        #     self.make_auto_fist(force=True)
+        #
+        # #
+        # self.hideShapesCB()
+        # self.controlsVisibilitySetup()
+        # self.clean()
 
         ######################################################################################################
 
@@ -277,11 +277,6 @@ class Arm(limb.Limb):
 
         else:
             cmds.warning('FK and IK system must be both created to hide shapes from controls in channelbox')
-
-###################################################################################################
-# builder function to keep class instances inside of a function and not in global
-
-
 
 
 ###################################################################################################

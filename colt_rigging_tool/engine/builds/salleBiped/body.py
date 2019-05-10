@@ -7,18 +7,18 @@ import shutil
 import json
 #
 from colt_rigging_tool.engine.utils import tools, controls_info
-from colt_rigging_tool.engine.setups.modules import structure
+# from colt_rigging_tool.engine.setups.modules import structure
 from colt_rigging_tool.engine.setups.bodyParts.body import spine, neck, arms, legs, feet
-from colt_rigging_tool.engine.asset.deformation import deformModule
+# from colt_rigging_tool.engine.asset.deformation import deformModule
 #
 reload(tools)
-reload(structure)
+# reload(structure)
 reload(spine)
 reload(neck)
 reload(arms)
 reload(legs)
 reload(feet)
-reload(deformModule)
+# reload(deformModule)
 reload(controls_info)
 
 
@@ -43,7 +43,6 @@ def initChar(asset_name=None, debug = 1):
 
     # Open latest builder file
     latest_builder = tools.get_last_file_version(BUILDER_SCENE_PATH, "biped_000", incremental=False)
-    print(latest_builder)
     builder_path = os.path.join(BUILDER_SCENE_PATH, latest_builder)
 
     if not os.path.exists(builder_path):
@@ -56,9 +55,9 @@ def initChar(asset_name=None, debug = 1):
 
     # INFO
 
-    # build rig
+    # build rig #################################################################
 
-    for side in "R":
+    for side in "L":
         upperArm_joint = "{}_upperArm_JNT".format(side)
         hand_joint = "{}_hand_JNT".format(side)
         #
@@ -78,7 +77,8 @@ def initChar(asset_name=None, debug = 1):
     mc.select(clear=True)
 
 
+######################################################################################################
 
 ######################################################################################################
 # INIT
-ASSET = initChar(asset_name="biped", debug = 1)
+initChar(asset_name="biped", debug = 1)
