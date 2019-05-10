@@ -561,14 +561,14 @@ def get_pole_vec_pos(root_pos, mid_pos, end_pos, pv_distance=50):
 
 ######################################################################################################
 
-BUILDER_SCENE_PATH = r"C:\Users\colt-desk\Desktop\biped_2019\biped\scenes"
+# BUILDER_SCENE_PATH = r"C:\Users\colt-desk\Desktop\biped_2019\biped\scenes"
 if __name__ == '__main__':
-    # list_joint_hier(top_joint="L_hand_JNT", with_end_joints=True)
+    # print(list_joint_hier(top_joint="L_upperArm_JNT", with_end_joints=True))
     # print getSideLetter(mc.ls(sl=True)[0])
     # swapJointOrient('l_upperleg_rig')
     # makeTwistJoints('l_lowerleg_rig', 5)
     # print(copySkeleton('hips_jnt', 'rig'))
     # create_deformation_joints_for_module("L_hand_rig_GRP")
-    latest_builder = get_last_file_version(BUILDER_SCENE_PATH, "biped_000", incremental=False)
-    print(latest_builder)
+    # latest_builder = get_last_file_version(BUILDER_SCENE_PATH, "biped_000", incremental=False)
+    # print(latest_builder)
     pass

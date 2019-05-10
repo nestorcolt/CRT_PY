@@ -12,7 +12,7 @@ reload(limb)
 
 ###################################################################################################
 # GLOBALS:
-UPPERARM_JOINT = 'L_clavicle_JNT'
+CLAVICLE_JOINT = 'L_clavicle_JNT'
 HAND_JOINT = "L_hand_JNT"
 
 ###################################################################################################
@@ -40,7 +40,7 @@ class Arm(limb.Limb):
         print(
             """
                 Description: arm class to build complex stretch ik fk arms system on humanoid character
-                ARM must have 3 joints: "upperARM to end".
+                ARM must have 3 joints: "UPPERARM to END".
             """
         )
 
@@ -52,7 +52,9 @@ class Arm(limb.Limb):
                  scaleIK=scaleIK,
                  scaleFK=scaleFK,
                  controlAngle=controlAngle,
-                 pole_vector_distance = pole_vector_distance)
+                 pole_vector_distance = pole_vector_distance,
+                 positive_ik=True)
+
 
         # PROPERTIES
         self.ik_clavicle_control = None
@@ -71,32 +73,31 @@ class Arm(limb.Limb):
     @tools.undo_cmds
     def build(self, hand_join="", twist_chain_len=5):
 
-        self.makeFK()
-        # self.makeIK()
+        self.makeFK(simple_fk=False)
+        self.makeIK()
 
-        # self.groupSystem()
-        # self.makeBlending()
+        self.groupSystem()
+        self.makeBlending()
 
-        # self.makeIkClavicle(chain=self.ik_hier, rigGroup=self.ik_group)
-        # self.create_deformation_chain()
+        self.makeIkClavicle(chain=self.ik_hier, rigGroup=self.ik_group)
+        self.create_deformation_chain()
+
+        self.makeFkStretchSystem()
+        self.makeIkStretchSystem()
+
+        self.connectStretchSystem()
         #
-        # self.makeFkStretchSystem()
-        # self.makeIkStretchSystem()
+        self.collectTwistJoints(limbJoints=self.inputChain[1:-1], index=twist_chain_len)
+        self.makeTwistSystem()
+
         #
-        # self.connectStretchSystem()
-        # #
-        # self.collectTwistJoints(limbJoints=self.inputChain[1:-1], index=twist_chain_len)
-        # self.makeTwistSystem()
+        if hand_join:
+            self.makeHand(hand_joint=hand_join)
+            self.make_auto_fist(force=True)
         #
-        # #
-        # if hand_join:
-        #     self.makeHand(hand_joint=hand_join)
-        #     self.make_auto_fist(force=True)
-        #
-        # #
-        # self.hideShapesCB()
-        # self.controlsVisibilitySetup()
-        # self.clean()
+        self.hideShapesCB()
+        self.controlsVisibilitySetup()
+        self.clean()
 
         ######################################################################################################
 
@@ -286,7 +287,7 @@ class Arm(limb.Limb):
 if __name__ == '__main__':
     tools.re_open_current_file()
     # instance:
-    arm = Arm(armJoint=UPPERARM_JOINT, scaleFK=8)
+    arm = Arm(armJoint=CLAVICLE_JOINT, scaleFK=8)
     arm.build(hand_join=HAND_JOINT)
     # arm.make_auto_fist(value=-20, force=True)
     cmds.select(clear=True)

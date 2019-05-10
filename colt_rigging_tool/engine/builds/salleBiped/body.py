@@ -7,18 +7,15 @@ import shutil
 import json
 #
 from colt_rigging_tool.engine.utils import tools, controls_info
-# from colt_rigging_tool.engine.setups.modules import structure
-from colt_rigging_tool.engine.setups.bodyParts.body import spine, neck, arms, legs, feet
-# from colt_rigging_tool.engine.asset.deformation import deformModule
+from colt_rigging_tool.engine.setups.modules import structure
+from colt_rigging_tool.engine.setups.bodyParts.body import arms, legs
+from colt_rigging_tool.engine.asset.deformation import deformModule
 #
 reload(tools)
-# reload(structure)
-reload(spine)
-reload(neck)
+reload(structure)
 reload(arms)
 reload(legs)
-reload(feet)
-# reload(deformModule)
+reload(deformModule)
 reload(controls_info)
 
 
@@ -39,8 +36,6 @@ def initChar(asset_name=None, debug = 1):
     if asset_name is None:
         return
 
-    character = asset_name
-
     # Open latest builder file
     latest_builder = tools.get_last_file_version(BUILDER_SCENE_PATH, "biped_000", incremental=False)
     builder_path = os.path.join(BUILDER_SCENE_PATH, latest_builder)
@@ -53,22 +48,22 @@ def initChar(asset_name=None, debug = 1):
     mc.file(builder_path, open=True, f=True)
     mc.viewFit()
 
-    # INFO
+    # INFO ######################################################################
+
+
 
     # build rig #################################################################
-
-    for side in "L":
-        upperArm_joint = "{}_upperArm_JNT".format(side)
+    for side in "LR":
+        clavicle_joint = "{}_clavicle_JNT".format(side)
         hand_joint = "{}_hand_JNT".format(side)
         #
-        arm = arms.Arm(armJoint=upperArm_joint, scaleFK=8)
+        arm = arms.Arm(armJoint=clavicle_joint, scaleFK=8)
         arm.build(hand_join=hand_joint)
         #
         #
-        # upperLeg_joint = "{}_upperLeg_JNT".format(side)
-        # leg = legs.Leg(legJoint=upperLeg_joint, scaleFK=8)
-        # leg.build()
-
+        upperLeg_joint = "{}_upperLeg_JNT".format(side)
+        leg = legs.Leg(legJoint=upperLeg_joint, scaleFK=8)
+        leg.build()
 
 
     #

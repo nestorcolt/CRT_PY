@@ -12,7 +12,7 @@ reload(limb)
 
 ###################################################################################################
 # GLOBALS:
-UPPERLEG_JOINT = 'R_upperLeg_JNT'
+UPPERLEG_JOINT = 'L_upperLeg_JNT'
 
 ###################################################################################################
 """
@@ -21,7 +21,6 @@ UPPERLEG_JOINT = 'R_upperLeg_JNT'
     that means that each system "IK-FK" can be constructed separately and will work as an only system
 
 """
-
 
 ###################################################################################################
 
@@ -40,8 +39,8 @@ class Leg(limb.Limb):
 
         print(
             """
-                Description: arm class to build complex stretch ik fk arms system on humanoid character
-                ARM must have 3 joints: "upperARM to end".
+                Description: leg class to build complex stretch ik fk leg system on humanoid character
+                LEG must have 3 joints: "UPPERLEG to END".
             """
         )
 
@@ -54,7 +53,7 @@ class Leg(limb.Limb):
             scaleFK=scaleFK,
             controlAngle=controlAngle,
             pole_vector_distance=pole_vector_distance,
-            postive_ik=False)
+            positive_ik=False)
 
     ######################################################################################################
 
