@@ -29,7 +29,7 @@ UPPERLEG_JOINT = 'L_upperLeg_JNT'
 class Leg(limb.Limb):
 
     def __init__(self,
-                 armJoint='',
+                 legJoint='',
                  name='legClass',
                  prefix='leg',
                  scale=1.0,
@@ -46,7 +46,7 @@ class Leg(limb.Limb):
         )
 
         super(Leg, self).__init__(
-            firstJoint=armJoint,
+            firstJoint=legJoint,
             name=name,
             prefix=prefix,
             scale=scale,
@@ -61,25 +61,25 @@ class Leg(limb.Limb):
     @tools.undo_cmds
     def build(self, twist_chain_len=5):
 
-        self.makeFK()
+        self.makeFK(simple_fk=True)
         self.makeIK()
         #
-        # self.groupSystem()
-        # self.makeBlending()
+        self.groupSystem()
+        self.makeBlending()
         #
-        # self.create_deformation_chain()
+        self.create_deformation_chain()
         #
-        # self.makeFkStretchSystem()
-        # self.makeIkStretchSystem()
-        #
-        # self.connectStretchSystem()
+        self.makeFkStretchSystem()
+        self.makeIkStretchSystem()
+
+        self.connectStretchSystem()
         # #
-        # self.collectTwistJoints(limbJoints=self.inputChain[0:-1], index=twist_chain_len)
-        # self.makeTwistSystem()
+        self.collectTwistJoints(limbJoints=self.inputChain[:-1], index=twist_chain_len)
+        self.makeTwistSystem()
         # #
-        # self.hideShapesCB()
-        # self.controlsVisibilitySetup()
-        # self.clean()
+        self.hideShapesCB()
+        self.controlsVisibilitySetup()
+        self.clean()
 
         ######################################################################################################
 
@@ -129,7 +129,7 @@ class Leg(limb.Limb):
 # if __name__ != '__main__':
 tools.re_open_current_file()
 # instance:
-leg = Leg(armJoint=UPPERLEG_JOINT, scaleFK=8)
+leg = Leg(legJoint=UPPERLEG_JOINT, scaleFK=8)
 leg.build()
 cmds.select(clear=True)
 del leg

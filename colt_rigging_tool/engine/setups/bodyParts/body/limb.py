@@ -161,7 +161,7 @@ class Limb(object):
     #
 
     @tools.undo_cmds
-    def makeFK(self):
+    def makeFK(self, simple_fk=False):
 
         # check if FK is already created
         if self.checkFK:
@@ -197,15 +197,18 @@ class Limb(object):
             ctrl = None
             gimbLock = None
 
-            if idx == len(fk_hier) - 1:
-                ctrl = control.Control(prefix=name + '_FK', translateTo=dummy, rotateTo=dummy, angle='z', scale=self.scaleFK * 0.25)
+            if jnt == fk_hier[-1] and simple_fk == False:
+                ctrl = control.Control(prefix=name + '_FK', translateTo=dummy, rotateTo=dummy,
+                                       angle='z', scale=self.scaleFK * 0.25)
                 cmds.move(10, ctrl.control + ".cv[*]", moveZ=True, absolute=True)
 
             else:
-                ctrl = control.Control(prefix=name + '_FK', translateTo=dummy, rotateTo=dummy, angle='x', scale=self.scaleFK)
+                ctrl = control.Control(prefix=name + '_FK', translateTo=dummy, rotateTo=dummy,
+                                       angle='x', scale=self.scaleFK)
 
-                if idx == len(fk_hier) - 2:
-                    gimbLock = control.Control(prefix=name + '_FK' + '_gimbLock', shape=3, translateTo=dummy, rotateTo=dummy, scale=self.scaleFK * 0.25)
+                if jnt == fk_hier[-2] and simple_fk == False:
+                    gimbLock = control.Control(prefix=name + '_FK' + '_gimbLock', shape=3, translateTo=dummy,
+                                               rotateTo=dummy, scale=self.scaleFK * 0.25)
                     cmds.setAttr(gimbLock.control + '.rotateOrder', 1)
 
                     if cmds.getAttr(jnt + '.tx') > 0:
@@ -261,6 +264,7 @@ class Limb(object):
 
         # this returns a pymel object. get object.name()
         ik_main_jnt = tools.copySkeleton(self.inputChain[0], 'IK')
+        cmds.delete(cmds.parentConstraint(ik_main_jnt.name(), ik_group))
 
         cmds.select(ik_main_jnt.name())
         cmds.select(hi=True)
@@ -319,6 +323,7 @@ class Limb(object):
                                      translateTo=ik_hier[-1], rotateTo=ik_hier[-1], scale=self.scale * 6)
 
         cmds.parentConstraint(ik_control.control, ik_handle[0])
+        cmds.parent(ik_main_jnt.name(), ik_group)
 
         # # swap orient values from jointO to rotate channels
         # for jnt in ik_hier:
@@ -333,7 +338,7 @@ class Limb(object):
 
         # create pole vector attach line
         self.poleVectorAttachLine = tools.makePoleVectorLine(name=self.letter + '_' + self.prefix,
-                                                             joint=self.ik_hier[2], poleVector=self.poleVector)
+                                                             joint=self.ik_hier[-2], poleVector=self.poleVector)
 
         self.attachLineGrp = cmds.group(n=self.poleVectorAttachLine + '_GRP', em=True)
         cmds.parent(self.poleVectorAttachLine, self.attachLineGrp)
@@ -370,8 +375,8 @@ class Limb(object):
 
         mainRigJnt = self.inputChain[:]
         for idx in range(len(mainRigJnt)):
-            const = cmds.orientConstraint([self.ik_hier[idx], self.fk_hier[idx]], mainRigJnt[idx])[0]
-            cmds.setAttr(const + '.interpType', 0)
+            const = cmds.parentConstraint([self.ik_hier[idx], self.fk_hier[idx]], mainRigJnt[idx])[0]
+            cmds.setAttr(const + '.interpType', 2)
             node = cmds.createNode('plusMinusAverage', n=const + '_plusMinusAvg_%d' % idx)
             cmds.setAttr(node + '.operation', 2)
             cmds.setAttr(node + '.input2D[0].input2Dx', 1)
@@ -454,8 +459,8 @@ class Limb(object):
 
         # collect data:
         dummy_A = cmds.group(n=self.letter + '_' + self.prefix + 'ikStretchMeasurePoint_A', em=True)
-        cmds.delete(cmds.parentConstraint(self.ik_hier[1], dummy_A))
-        cmds.parent(dummy_A, self.ik_hier[0])
+        cmds.delete(cmds.parentConstraint(self.ik_hier[-3], dummy_A))
+        cmds.parent(dummy_A, cmds.listRelatives(self.ik_hier[0], p=True)[0])
 
         topGrp = dummy_A
         handle = self.ik_control.control
@@ -520,7 +525,7 @@ class Limb(object):
         fk_node = self.FKStretchNode
 
         # check if there is a connection between condition node and main joints form leg
-        connection = cmds.listConnections(condition, d=True, t='joint')
+        connection = cmds.listConnections(condition, d=True, type='joint')
         runner = False
 
         if connection is not None:
@@ -567,6 +572,7 @@ class Limb(object):
                 # will align the twist parent to upper limb or lower limb
                 cmds.delete(cmds.parentConstraint(jnt, grp))
                 cmds.pointConstraint(jnt, grp)
+                cmds.aimConstraint(cmds.listRelatives(jnt)[0], grp)
                 cmds.parent(twist[0], grp)
                 cmds.parent(grp, self.limb_main_grp)
                 #
@@ -591,7 +597,7 @@ class Limb(object):
             cmds.warning('No twist joints found on structure')
             return
 
-        for itm in self.inputChain[1:]:
+        for itm in self.inputChain[-3:]:
             twistData = self.twistSysArray.get(itm, None)
 
             if twistData is not None:
@@ -603,7 +609,9 @@ class Limb(object):
                     cmds.setAttr('{}.poleVector{}'.format(handle, ch), 0)
 
                 # parent the handle to the limb joint
-                cmds.parent(handle, itm)
+                cmds.parentConstraint(itm, handle)
+                cmds.parent(handle, cmds.listRelatives(TD[0], parent=True)[0])
+
 
                 # null vars
                 ref_node = None
