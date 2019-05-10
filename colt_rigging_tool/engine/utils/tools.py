@@ -4,7 +4,7 @@
 
 """
 import os
-
+import maya.OpenMaya as om
 import maya.cmds as mc
 import pymel.core as pm
 import re
@@ -485,9 +485,6 @@ def get_last_file_version(path_to, file_name, incremental=False):
         files = [os.path.splitext(itm)[0] for itm in listed_files if itm.startswith(raw_name[:-4])
                  and itm.endswith(".json") or itm.endswith(".mb") or itm.endswith(".ma")]
 
-
-
-
         if not files and not incremental:
             return False
         elif not files and incremental:
@@ -498,12 +495,11 @@ def get_last_file_version(path_to, file_name, incremental=False):
                        key=lambda x: int(re.findall(r'\d+', os.path.splitext(os.path.split(x)[1])[0])[-1]))
 
             latest_file = files[0]
-
-            extention = [os.path.splitext(itm)[-1] for itm in listed_files if itm.startswith(raw_name[:-4])
-                         and itm.endswith(".json") or itm.endswith(".mb") or itm.endswith(".ma")][0]
+            extention = [os.path.splitext(itm)[-1] for itm in listed_files if latest_file == os.path.splitext(itm)[0]][0]
 
             if not incremental:
                 return "{}{}".format(latest_file, extention)
+
             else:
                 file_no_idx = latest_file[:-3]
                 index = str(int(latest_file[-3:]) + 1).zfill(3)
@@ -538,9 +534,34 @@ def re_open_current_file():
     else:
         mc.file(new=True, force=True)
 
+
+######################################################################################################
+def get_pole_vec_pos(root_pos, mid_pos, end_pos, pv_distance=50):
+    #
+    pole_vec_pos = None
+
+    root_vec = om.MVector(root_pos[0], root_pos[1], root_pos[2])
+    mid_vec = om.MVector(mid_pos[0], mid_pos[1], mid_pos[2])
+    end_vec = om.MVector(end_pos[0], end_pos[1], end_pos[2])
+
+    line = (end_vec - root_vec)
+    point = (mid_vec - root_vec)
+    #
+    scale_val = (line * point) / (line * line)
+    projected_vector = line * scale_val + root_vec
+
+    # next is for getting the length of the arm in case of use this as distance
+    # root_to_mid_len = point.length()
+    # mid_to_end_len = (end_vec - mid_vec).length()
+    # total_length = root_to_mid_len + mid_to_end_len
+    #
+    pole_vec_pos = (mid_vec - projected_vector).normal() * pv_distance + mid_vec
+
+    return pole_vec_pos
+
 ######################################################################################################
 
-BUILDER_SCENE_PATH = r"C:\Users\colt-desk\Desktop\Salle\2019\Abril\II entrega\mech_project\data\builder\builder"
+BUILDER_SCENE_PATH = r"C:\Users\colt-desk\Desktop\biped_2019\biped\scenes"
 if __name__ == '__main__':
     # list_joint_hier(top_joint="L_hand_JNT", with_end_joints=True)
     # print getSideLetter(mc.ls(sl=True)[0])
@@ -548,6 +569,6 @@ if __name__ == '__main__':
     # makeTwistJoints('l_lowerleg_rig', 5)
     # print(copySkeleton('hips_jnt', 'rig'))
     # create_deformation_joints_for_module("L_hand_rig_GRP")
-    # latest_builder = get_last_file_version(BUILDER_SCENE_PATH, "builder_001", incremental=False)
-
+    latest_builder = get_last_file_version(BUILDER_SCENE_PATH, "biped_000", incremental=False)
+    print(latest_builder)
     pass

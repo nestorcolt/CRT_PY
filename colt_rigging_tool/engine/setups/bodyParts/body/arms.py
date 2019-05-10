@@ -12,8 +12,8 @@ reload(limb)
 
 ###################################################################################################
 # GLOBALS:
-UPPERARM_JOINT = 'L_clavicle_JNT'
-HAND_JOINT = "L_hand_JNT"
+UPPERARM_JOINT = 'R_clavicle_JNT'
+HAND_JOINT = "R_hand_JNT"
 
 ###################################################################################################
 """
@@ -35,7 +35,7 @@ class Arm(limb.Limb):
                  scaleIK=1.0,
                  scaleFK=1.0,
                  controlAngle=30,
-                 pole_vector_distance = 60):
+                 pole_vector_distance = 40):
 
         print(
             """
@@ -55,7 +55,6 @@ class Arm(limb.Limb):
                  pole_vector_distance = pole_vector_distance)
 
         # PROPERTIES
-
         self.ik_clavicle_control = None
 
         # hand controls
@@ -74,10 +73,6 @@ class Arm(limb.Limb):
 
         self.makeFK()
         self.makeIK()
-        #
-        if hand_join:
-            self.makeHand(hand_joint=hand_join)
-            self.make_auto_fist(force=True)
 
         self.groupSystem()
         self.makeBlending()
@@ -92,6 +87,12 @@ class Arm(limb.Limb):
         #
         self.collectTwistJoints(limbJoints=self.inputChain[1:-1], index=twist_chain_len)
         self.makeTwistSystem()
+
+        #
+        if hand_join:
+            self.makeHand(hand_joint=hand_join)
+            # self.make_auto_fist(force=True)
+            pass
         #
         self.hideShapesCB()
         self.controlsVisibilitySetup()
@@ -150,10 +151,6 @@ class Arm(limb.Limb):
         topControl = control.Control(prefix=handName + '_UI', translateTo=hand, rotateTo=hand,
                                      shape=4, scale=self.scale * 2, lockChannels=['t', 'r', 's', 'v'])
 
-        cmds.parentConstraint(hand_joint, topControl.root, mo=True)
-
-        tools.hideShapesChannelBox([topControl.control])
-
         # check X value
         child = cmds.listRelatives(hand)[0]
         value = cmds.getAttr(child + '.tx')
@@ -165,6 +162,8 @@ class Arm(limb.Limb):
 
         # flatten shape
         shapes = cmds.listRelatives(topControl.control, shapes=True)
+        cmds.parentConstraint(hand_joint, topControl.root, mo=True)
+        tools.hideShapesChannelBox([topControl.control])
 
         for itm in shapes:
             cvs = cmds.getAttr(itm + '.spans') + 1
@@ -181,6 +180,7 @@ class Arm(limb.Limb):
             cmds.orientConstraint(ctrl.control, jnt)
             controlsArray.append(ctrl)
 
+
         for idx, (ctrl, jnt) in enumerate(zip(controlsArray, handJoints)):
             #
             parent = cmds.listRelatives(jnt, p=True)[0]
@@ -193,17 +193,15 @@ class Arm(limb.Limb):
                 cmds.parent(ctrl.root, hand_control_grp)
 
         # parenting hand controls group to general limb group
+        cmds.parent(hand_joint, handGrp)
         cmds.parentConstraint(hand_control_grp, hand_joint, mo=True)
         cmds.parentConstraint(self.inputChain[-1], hand_control_grp, mo=True)
         #
-        cmds.parent(hand_joint, handGrp)
-
         self.handTopCtrl = topControl
         self.fingers = controlsArray
         self.hand_module_grp = handGrp
 
         # make hand float attributes for channel box setting
-
         attributes = ['thumb', 'index', 'middle', 'ring', 'pinky']
 
         for att in attributes:
@@ -290,12 +288,12 @@ class Arm(limb.Limb):
 
 
 # IN MODULE TEST:
-# if __name__ == '__main__':
+if __name__ == '__main__':
     tools.re_open_current_file()
     # instance:
-arm = Arm(armJoint=UPPERARM_JOINT, scaleFK=8)
-arm.build(hand_join=HAND_JOINT)
-# arm.make_auto_fist(value=-20, force=True)
-cmds.select(clear=True)
-# del arm
-pass
+    arm = Arm(armJoint=UPPERARM_JOINT, scaleFK=8)
+    arm.build(hand_join=HAND_JOINT)
+    # arm.make_auto_fist(value=-20, force=True)
+    cmds.select(clear=True)
+    # del arm
+    pass

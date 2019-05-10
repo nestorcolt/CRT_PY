@@ -12,7 +12,7 @@ reload(limb)
 
 ###################################################################################################
 # GLOBALS:
-UPPERLEG_JOINT = 'L_upperLeg_JNT'
+UPPERLEG_JOINT = 'R_upperLeg_JNT'
 
 ###################################################################################################
 """
@@ -63,7 +63,7 @@ class Leg(limb.Limb):
 
         self.makeFK(simple_fk=True)
         self.makeIK()
-        #
+        # #
         self.groupSystem()
         self.makeBlending()
         #
@@ -126,11 +126,11 @@ class Leg(limb.Limb):
 
 
 # IN MODULE TEST:
-# if __name__ != '__main__':
-tools.re_open_current_file()
-# instance:
-leg = Leg(legJoint=UPPERLEG_JOINT, scaleFK=8)
-leg.build()
-cmds.select(clear=True)
-del leg
-pass
+if __name__ == '__main__':
+    tools.re_open_current_file()
+    # instance:
+    leg = Leg(legJoint=UPPERLEG_JOINT, scaleFK=8)
+    leg.build()
+    cmds.select(clear=True)
+    del leg
+    pass

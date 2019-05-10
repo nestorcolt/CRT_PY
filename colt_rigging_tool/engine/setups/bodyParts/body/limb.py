@@ -284,17 +284,22 @@ class Limb(object):
         joint_orient = map(lambda axis: cmds.getAttr("{}.jointOrient{}".format(ik_hier[-2], axis)),"XYZ")
 
         #  set prefered angle
-        cmds.delete(cmds.aimConstraint(dummie_ik_aim, ik_hier[-2]))
+        x_val = cmds.getAttr("{}.translateX".format(ik_main_jnt.name()))
+        get_sign = lambda x: (1, -1)[x < 0]
+        cmds.delete(cmds.aimConstraint(dummie_ik_aim, ik_hier[-2], aimVector=(get_sign(x_val), 0, 0)))
         cmds.joint(ik_hier[-2], edit=True, setPreferredAngles=True, children=False)
 
+        pref_angle_raw = cmds.getAttr("{}.preferredAngleY".format(ik_hier[-2]))
 
         # back to previous angles
-        cmds.joint(ik_hier[-2], edit=True, angleX="0deg", angleY="0deg", angleZ="0deg")
         map(lambda axis, angle: cmds.setAttr("{}.jointOrient{}".format(ik_hier[-2], axis), angle),
             "XYZ", joint_orient)
 
         map(lambda axis, angle: cmds.setAttr("{}.preferredAngle{}".format(ik_hier[-2], axis), angle),
-            "XZ", (0,0) )
+            "XYZ", (0,get_sign(pref_angle_raw), 0) )
+
+
+        cmds.joint(ik_hier[-2], edit=True, angleX="0deg", angleY="0deg", angleZ="0deg")
 
         # creates ik handle
         ik_handle = cmds.ikHandle(n=self.letter + '_' + self.prefix + '_ikh', solver='ikRPsolver',
@@ -302,14 +307,11 @@ class Limb(object):
         # create pole vector
         poleVec = control.Control(prefix=self.letter + '_' + self.prefix + '_poleVec', shape=4, scale=2)
 
-        cmds.delete(cmds.pointConstraint([ik_hier[1], ik_hier[-1]], poleVec.root))
-        cmds.delete(cmds.aimConstraint(ik_hier[2], poleVec.root, aim=(0.0, 0.0, 1.0)))
+        root, mid, end = map(lambda item: cmds.xform(item, ws=True, q=True, t=True), ik_hier[-3:])
 
-        if self.positive_ik:
-            self.poleVector_distance = self.poleVector_distance * -1
-
-        cmds.move(self.poleVector_distance, poleVec.root, moveZ=True, worldSpace=True, absolute=True)
-        cmds.delete(cmds.orientConstraint(ik_hier[2], poleVec.root))
+        # Vector math function to get pole vector exact position
+        pv_position = tools.get_pole_vec_pos(root, mid, end, self.poleVector_distance)
+        cmds.move(pv_position.x, pv_position.y, pv_position.z, poleVec.root, worldSpace=True, absolute=True)
 
         # set pole vector contranint
         cmds.poleVectorConstraint(poleVec.control, ik_handle[0])
@@ -572,7 +574,11 @@ class Limb(object):
                 # will align the twist parent to upper limb or lower limb
                 cmds.delete(cmds.parentConstraint(jnt, grp))
                 cmds.pointConstraint(jnt, grp)
-                cmds.aimConstraint(cmds.listRelatives(jnt)[0], grp)
+                x_val = cmds.getAttr("{}.translateX".format(jnt))
+
+                # esto del get sign esta cojonudo
+                get_sign = lambda x: (1, -1)[x < 0]
+                cmds.aimConstraint(cmds.listRelatives(jnt)[0], grp, aimVector=(get_sign(x_val), 0, 0))
                 cmds.parent(twist[0], grp)
                 cmds.parent(grp, self.limb_main_grp)
                 #
