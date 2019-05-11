@@ -45,7 +45,8 @@ class Control(object):
         if shape == 1:
             control_object = cmds.circle(n=prefix + '_CTL', normal=[0, 1, 0], ch=False, radius=1.0)[0]
         elif shape == 2:
-            control_object = cmds.curve(n=prefix + '_CTL', d=1, p=[(-1, 0, -1), (-1, 0, 1), (1, 0, 1), (1, 0, -1), (-1, 0, -1)], k=[0, 1, 2, 3, 4])
+            control_object = cmds.curve(n=prefix + '_CTL', d=1, p=[(-1, 0, -1), (-1, 0, 1), (1, 0, 1),
+                                                                   (1, 0, -1), (-1, 0, -1)], k=[0, 1, 2, 3, 4])
         elif shape == 3:
             control_object = cmds.circle(n=prefix + '_CTL', ch=False, normal=[1, 0, 0], radius=1.0)[0]
             add_shape = cmds.circle(n=prefix + '_CTL2', ch=False, normal=[0, 0, 1], radius=1.0)[0]
@@ -76,8 +77,9 @@ class Control(object):
             cmds.delete(cmds.pointConstraint(translateTo, self.root))
 
         # rotate control
-        if cmds.objExists(rotateTo):
-            cmds.delete(cmds.orientConstraint(rotateTo, self.root))
+        if rotateTo is not None:
+            if cmds.objExists(rotateTo):
+                cmds.delete(cmds.orientConstraint(rotateTo, self.root))
 
         # parent control
         if cmds.objExists(parent):

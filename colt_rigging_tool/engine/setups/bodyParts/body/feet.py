@@ -349,8 +349,8 @@ class Feet(object):
         footAreas = ['toes_tip', 'ball', 'heel']
         visControls = []
 
-        ctrlItems = {'l': self.leftFoot, 'r': self.rightFoot}
-        interval = [0, 'l', 'r']
+        ctrlItems = {'L': self.leftFoot, 'R': self.rightFoot}
+        interval = [0, 'L', 'R']
         selected = cmds.ls(sl=True)[0].encode('ascii', 'ignore')
         current = interval[interval.index(selected[0])]
         flipped = interval[interval.index(selected[0]) * -1]
@@ -479,7 +479,7 @@ class Feet(object):
 # IN MODULE TEST:
 if __name__ == '__main__':
     foot = Feet(foot_joint="L_foot_01_JNT", hook="L_legEnd_JNT",
-                hook_fk="L_legEnd_FK_CTL", hook_ik="L_leg_IK_CTL",
+                hook_fk="L_legEnd_JNT", hook_ik="L_legEnd_JNT",
                 attribute_holder = "L_leg_UI_CTL")
     foot.build()
     cmds.select(clear=True)

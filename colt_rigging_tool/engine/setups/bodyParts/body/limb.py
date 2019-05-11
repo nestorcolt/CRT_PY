@@ -143,7 +143,7 @@ class Limb(object):
     # Build Fk Chain
     #
     @tools.undo_cmds
-    def makeFK(self, simple_fk=False):
+    def makeFK(self, simple_fk=False, world_orient=False):
 
         # check if FK is already created
         if self.checkFK:
@@ -227,7 +227,7 @@ class Limb(object):
     # Build IK chain
     #
     @tools.undo_cmds
-    def makeIK(self):
+    def makeIK(self, world_orient=False):
 
         # check if IK is already created
         if self.checkIK:
@@ -295,6 +295,8 @@ class Limb(object):
         cmds.parent(ik_handle[0], ik_group)
 
         # create IK control
+        control_orientation = ik_hier[-1]
+        #
         ik_control = control.Control(prefix=self.letter + '_' + self.prefix + '_IK', shape=2, angle='x',
                                      translateTo=ik_hier[-1], rotateTo=ik_hier[-1], scale=self.scale * 6)
 
@@ -395,6 +397,7 @@ class Limb(object):
 
         # connect multiply divide
         cmds.setAttr(fk_multiDiv + '.operation', 1)
+        cmds.setAttr(fk_plusMinus + '.operation', 1)
 
         if cmds.getAttr(self.inputChain[-2] + '.tx') < 0:
             cmds.setAttr(fk_multiDiv + '.input2X', -1)
@@ -494,6 +497,36 @@ class Limb(object):
         condition = self.IKFKStretchConditionNode
         ik_node = self.IKStretchNode
         fk_node = self.FKStretchNode
+        #
+        reverse = cmds.createNode("reverse", n="{}Stretch_REV".format(attHolder))
+        stretch_fix_PMA_01 = cmds.createNode("plusMinusAverage", n="{}StretchFix_01_PMA".format(attHolder))
+        stretch_fix_MDV = cmds.createNode("multiplyDivide", n="{}StretchFix_MDV".format(attHolder))
+        stretch_fix_PMA_02 = cmds.createNode("plusMinusAverage", n="{}StretchFix_02_PMA".format(attHolder))
+
+        # set fix nodes attributes
+        cmds.setAttr("{}.operation".format(stretch_fix_PMA_01), 2)
+        cmds.setAttr("{}.operation".format(stretch_fix_MDV), 1)
+        cmds.setAttr("{}.operation".format(stretch_fix_PMA_02), 1)
+        #
+        # connect fix nodes
+        cmds.connectAttr("{}.output2Dx".format(stretch_fix_PMA_01), "{}.input1X".format(stretch_fix_MDV))
+        cmds.connectAttr("{}.output2Dy".format(stretch_fix_PMA_01), "{}.input1Y".format(stretch_fix_MDV))
+
+        cmds.connectAttr("{}.outputX".format(stretch_fix_MDV), "{}.input2D[0].input2Dx".format(stretch_fix_PMA_02))
+        cmds.connectAttr("{}.outputY".format(stretch_fix_MDV), "{}.input2D[0].input2Dy".format(stretch_fix_PMA_02))
+
+        cmds.connectAttr(fk_node + '.output2D.output2Dx', "{}.input2D[1].input2Dx".format(stretch_fix_PMA_02), f=True)
+        cmds.connectAttr(fk_node + '.output2D.output2Dy', "{}.input2D[1].input2Dy".format(stretch_fix_PMA_02), f=True)
+
+        cmds.connectAttr("{}.IK_0_FK_1".format(attHolder), "{}.inputX".format(reverse))
+        cmds.connectAttr("{}.outputX".format(reverse), "{}.input2X".format(stretch_fix_MDV))
+        cmds.connectAttr("{}.outputX".format(reverse), "{}.input2Y".format(stretch_fix_MDV))
+
+        cmds.connectAttr("{}.outputX".format(ik_node), "{}.input2D[0].input2Dx".format(stretch_fix_PMA_01))
+        cmds.connectAttr("{}.outputY".format(ik_node), "{}.input2D[0].input2Dy".format(stretch_fix_PMA_01))
+
+        cmds.connectAttr("{}.output2Dx".format(fk_node), "{}.input2D[1].input2Dx".format(stretch_fix_PMA_01))
+        cmds.connectAttr("{}.output2Dy".format(fk_node), "{}.input2D[1].input2Dy".format(stretch_fix_PMA_01))
 
         # check if there is a connection between condition node and main joints form leg
         connection = cmds.listConnections(condition, d=True, type='joint')
@@ -508,12 +541,12 @@ class Limb(object):
 
             # connect attribute holder to condition
             cmds.connectAttr(attHolder + '.IK_0_FK_1', condition + '.firstTerm', f=True)
-            cmds.setAttr(condition + '.secondTerm', 1)
-            cmds.setAttr(condition + '.operation', 0)
+            cmds.setAttr(condition + '.secondTerm', 0)
+            cmds.setAttr(condition + '.operation', 2)
 
         if self.checkFK and cmds.listConnections(condition, d=True, type='plusMinusAverage') is None:
-            cmds.connectAttr(fk_node + '.output2D.output2Dx', condition + '.colorIfTrueR', f=True)
-            cmds.connectAttr(fk_node + '.output2D.output2Dy', condition + '.colorIfTrueG', f=True)
+            cmds.connectAttr(stretch_fix_PMA_02 + '.output2D.output2Dx', condition + '.colorIfTrueR', f=True)
+            cmds.connectAttr(stretch_fix_PMA_02 + '.output2D.output2Dy', condition + '.colorIfTrueG', f=True)
             cmds.setAttr(attHolder + '.IK_0_FK_1', 1)
 
         if self.checkIK and cmds.listConnections(condition, d=True, type='multiplyDivide') is None:
