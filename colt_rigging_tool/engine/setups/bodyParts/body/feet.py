@@ -2,12 +2,14 @@ import collections
 import maya.cmds as cmds
 import pymel.core as pm
 import maya.mel as mel
-from engine.utils import tools
-from engine.setups.controls import control
+from colt_rigging_tool.engine.utils import tools
+from colt_rigging_tool.engine.utils import rigCommands
+from colt_rigging_tool.engine.setups.controls import control
 
 
 reload(control)
 reload(tools)
+reload(rigCommands)
 
 ###################################################################################################
 # GLOBALS:
@@ -31,59 +33,169 @@ LEG_END_JOINT = 'l_leg_end_rig'
 
 class Feet(object):
 
-    def __init__(self, legEndJoint='', name='feetClass', prefix='foot', scale=1.0, scaleIK=1.0, scaleFK=1.0):
+    def __init__(self,
+                 foot_joint='',
+                 hook = "",
+                 name='feetClass',
+                 prefix='foot',
+                 scale=1.0,
+                 scaleIK=1.0,
+                 scaleFK=1.0,
+                 hook_ik="",
+                 hook_fk="",
+                 attribute_holder = ""):
 
         # public member
-        self.letter = tools.getSideLetter(legEndJoint)
+        self.letter = tools.getSideLetter(foot_joint)
+
         self.prefix = prefix
-
         self.scale = scale
+
         self.scaleIK = scaleIK
-
         # general limb parent
-        self.parent = legEndJoint
+        self.parent = hook
+        self.ik_hook = hook_ik
+        self.fk_hook = hook_fk
+        self.input_attribute_holder = attribute_holder
 
+        self.foot_joint = foot_joint
         # locators for positioning
         self.dummyNames = ['ankle', 'ball', 'toes', 'toes_tip', 'tillIn', 'tillOut', 'heel']
         self.dummyLocs = []
-        self.dummyPos = []
 
+        self.dummyPos = []
         # feet dictionaries
         self.leftFoot = None
-        self.rightFoot = None
 
+        self.rightFoot = None
         #
         # current foot
         self.currentFoot = None
-        self.currentControls = None
 
+        self.currentControls = None
         # current attribute holder
         self.currentHolder = None
 
+        self.mainFootControl = None
+        self.chains = {}
+        #
+        self._ik_control = cmds.createNode("transform", n="{}_footInner_IK_NCTL".format(self.letter))
+        #
+        self.ik_group =  cmds.createNode("transform", n="{}_foot_IK_GRP".format(self.letter))
+        self.fk_group = cmds.createNode("transform", n="{}_foot_FK_GRP".format(self.letter))
+        self.main_group = cmds.createNode("transform", n="{}_foot_MAIN_GRP".format(self.letter))
+        #
+        self.foot_group = cmds.createNode("transform", n="{}_foot_rig_GRP".format(self.letter))
+        self.controls_group = cmds.createNode("transform", n="{}_foot_controls_GRP".format(self.letter))
+        self._fk_controls = []
+
+        cmds.parent(self.ik_group, self.foot_group)
+        cmds.parent(self.fk_group, self.foot_group)
+        cmds.parent(self.main_group, self.foot_group)
+        cmds.parent(self._ik_control, self.controls_group)
+
+    ######################################################################################################
+    def hook_to_leg(self):
+
+        if self.ik_hook and self.fk_hook:
+            if cmds.objExists(self.ik_hook) or cmds.objExists(self.fk_hook):
+                cmds.parentConstraint(self.ik_hook, self._ik_control, mo=True)
+                cmds.parentConstraint(self.fk_hook, self._fk_controls[0].root, mo=True)
+
+                # rename index 0 fx control
+                ctrl = self._fk_controls[0].control
+                cmds.setAttr("{}.lodVisibility".format(pm.PyNode(ctrl).getShape().name()), 0)
+                ctrl_name = ctrl.replace("_CTL", "_NCTRL")
+                cmds.rename(ctrl, ctrl_name)
+
+            # connect Attributes holder
+            cmds.connectAttr("{}.IK_0_FK_1".format(self.input_attribute_holder),
+                             "{}.IK_0_FK_1".format(self.currentHolder), f=True)
+
+
+    ######################################################################################################
+
+    def create_attribute_holder(self):
+        self.currentHolder = cmds.createNode("transform", n="{}_foot_attributeHolder_node".format(self.letter))
+        cmds.parent(self.currentHolder, self.foot_group)
+        # create attribute
+        if not pm.attributeQuery('IK_0_FK_1', node=self.currentHolder, exists=True):
+            pm.addAttr(self.currentHolder, k=True, shortName='IKFK', longName='IK_0_FK_1',
+                       defaultValue=0, minValue=0, maxValue=1)
+        #
+    ######################################################################################################
+
+    def duplicate_and_bind(self):
+        self.chains["MAIN"] = tools.list_joint_hier(self.foot_joint, with_end_joints=False)
+        #
+        for tag in "IK_FK".split("_"):
+            root = tools.copySkeleton(self.foot_joint, tag).name()
+            self.chains[tag] = tools.list_joint_hier(root, with_end_joints=False)
+        #
+        cmds.parent(self.chains["MAIN"][0], self.main_group)
+        cmds.parent(self.chains["IK"][0], self.ik_group)
+        cmds.parent(self.chains["FK"][0], self.fk_group)
+
+        for idx, (ik, fk) in enumerate(zip(self.chains["IK"], self.chains["FK"])):
+            main = self.chains["MAIN"][idx]
+            const = cmds.parentConstraint([ik, fk], main)[0]
+            cmds.setAttr(const + '.interpType', 2)
+            node = cmds.createNode('plusMinusAverage', n=const + '_plusMinusAvg_%d' % idx)
+            cmds.setAttr(node + '.operation', 2)
+            cmds.setAttr(node + '.input2D[0].input2Dx', 1)
+            attributes = cmds.listAttr(const)[-2:]
+            #
+            # locator to node
+            pm.connectAttr(self.currentHolder + '.IK_0_FK_1', node + '.input2D[1].input2Dx', f=True)
+            # locator to constraint
+            pm.connectAttr(self.currentHolder + '.IK_0_FK_1', const + '.' + attributes[1], f=True)
+            # node to contraint
+            cmds.connectAttr(node + '.output2Dx', const + '.' + attributes[0], f=True)
+
     ###################################################################################################
+    ######################################################################################################
+
     # clean method
+    @tools.undo_cmds
+    def build(self):
+        self.create_attribute_holder()
+        self.duplicate_and_bind()
+        self.create_IK_reverse_foot(self.dummyNames)
+        self.create_FK_foot()
+        self.hook_to_leg()
+        # self.makeBlend()
+        # self.hideShapesCB()
+        # self.setupFootRoll()
+        # self.flipAndDuplicate(dummies)
+
+    ######################################################################################################
 
     def cleanFeet(self):
         for itm in self.dummyNames:
             cmds.delete(itm)
 
+    ######################################################################################################
+
+    def create_FK_foot(self):
+        self.fk_simple_obj = rigCommands.Simple_fk_command(joint_root=self.chains["FK"][0],
+                                                          parent=self.controls_group,
+                                                          color=13,
+                                                          size=6)
+
+        self._fk_controls = self.fk_simple_obj.create_chain()
+
     ###################################################################################################
     # build the foot structure based on the locators previusly created
     #
-    def createFootStructure(self, locArray):
-        """
 
-            Description: ARG1 = locators array on scene ARG2 = ik handle from IK leg system
-
-        """
-
+    def create_IK_reverse_foot(self, locArray):
         sideValue = cmds.getAttr(locArray[0] + '.tx')
         letter = ''
 
         if sideValue >= 0:
-            letter = 'l'
+            letter = 'L'
         else:
-            letter = 'r'
+            letter = 'R'
 
         # tag current foot
         self.currentFoot = letter
@@ -91,20 +203,17 @@ class Feet(object):
         ikHandle = '%s_leg_ikh' % letter
         ctrlDict = {}
 
-        attHolder = letter + '_leg_attributeHolderShape'
-        self.currentHolder = attHolder
-
         for itm in locArray:
             pt = cmds.ls(itm)[0]
             ctrl = None
 
             if itm == 'ankle':
-                ctrl = control.Control(prefix=letter + '_' + pt + '_IK', translateTo=pt, angle='x', rotateTo=pt, scale=self.scaleIK * 4)
-                cmds.move(0, ctrl.control + '.cv[*]', absolute=True, moveY=True)
-                cmds.parent(attHolder, ctrl.control, s=True, add=True)
+                cmds.delete(cmds.parentConstraint(pt, self._ik_control))
+                cmds.parentConstraint(self._ik_control, pt, mo=True)
 
             elif itm in ['ball', 'toes', 'tillIn', 'tillOut']:
-                ctrl = control.Control(prefix=letter + '_' + pt + '_IK', translateTo=pt, angle='x', rotateTo=pt, scale=self.scaleIK * 4, lockChannels=['t', 's', 'v'])
+                ctrl = control.Control(prefix=letter + '_' + pt + '_IK', translateTo=pt, angle='z',
+                                       rotateTo=pt, scale=self.scaleIK * 4, lockChannels=['t', 's', 'v'])
 
                 if itm == 'ball':
                     cmds.addAttr(ctrl.control, longName='footControl', dt="string")
@@ -142,13 +251,15 @@ class Feet(object):
                         cmds.setAttr(ctrl.auto + '.limitedChannel', 'minimum', type='string')
 
             elif itm in ['toes_tip', 'heel']:
-                ctrl = control.Control(prefix=letter + '_' + pt + '_IK', translateTo=pt, angle='y', rotateTo=pt, scale=self.scaleIK * 4, lockChannels=['t', 's', 'v'])
+                ctrl = control.Control(prefix=letter + '_' + pt + '_IK', translateTo=pt, angle='X',
+                                       rotateTo=pt, scale=self.scaleIK * 4, lockChannels=['t', 's', 'v'])
 
             # add contorl to dictionary
             ctrlDict[itm] = ctrl
 
-        # print(ctrlDict)
-        #
+        # make auto attributes - means: create in IK controls all foot attributes for motions
+        self.mainFootControl = self._ik_control
+        self.currentControls = ctrlDict
 
         # make hierchy
         cmds.parent(ctrlDict['ball'].root, ctrlDict['toes_tip'].control)
@@ -156,40 +267,38 @@ class Feet(object):
         cmds.parent(ctrlDict['toes_tip'].root, ctrlDict['tillOut'].control)
         cmds.parent(ctrlDict['tillOut'].root, ctrlDict['tillIn'].control)
         cmds.parent(ctrlDict['tillIn'].root, ctrlDict['heel'].control)
-        cmds.parent(ctrlDict['heel'].root, ctrlDict['ankle'].control)
+        cmds.parentConstraint(self.mainFootControl , ctrlDict['heel'].root, mo=True)
 
         # parent ikHandle :
-        cmds.parentConstraint(ctrlDict['ball'].control, ikHandle, mo=True)
-
-        #
-        # make auto attributes - means: create in IK controls all foot attributes for motions
-        mainFootControl = ctrlDict['ankle']
-        self.currentControls = ctrlDict
-
-        cmds.addAttr(mainFootControl.control, k=True, longName='ball', defaultValue=0)
-        cmds.addAttr(mainFootControl.control, k=True, longName='toes', defaultValue=0)
-        cmds.addAttr(mainFootControl.control, k=True, longName='toes_tip', defaultValue=0)
-        cmds.addAttr(mainFootControl.control, k=True, longName='tillOut', defaultValue=0)
-        cmds.addAttr(mainFootControl.control, k=True, longName='tillIn', defaultValue=0)
-        cmds.addAttr(mainFootControl.control, k=True, longName='heel', defaultValue=0)
+        cmds.addAttr(self.mainFootControl , k=True, longName='ball', defaultValue=0)
+        cmds.addAttr(self.mainFootControl , k=True, longName='toes', defaultValue=0)
+        cmds.addAttr(self.mainFootControl , k=True, longName='toes_tip', defaultValue=0)
+        cmds.addAttr(self.mainFootControl , k=True, longName='tillOut', defaultValue=0)
+        cmds.addAttr(self.mainFootControl , k=True, longName='tillIn', defaultValue=0)
+        cmds.addAttr(self.mainFootControl , k=True, longName='heel', defaultValue=0)
 
         # add foot roll attribute
-        cmds.addAttr(mainFootControl.control, k=True, longName='footRoll', defaultValue=0)
+        cmds.addAttr(self.mainFootControl , k=True, longName='footRoll', defaultValue=0)
 
         # add show hide attribute
-        cmds.addAttr(mainFootControl.control, k=True, longName='showControls', shortName='SWC', at='bool', defaultValue=1)
+        cmds.addAttr(self.mainFootControl , k=True, longName='showControls', shortName='SWC', at='bool', defaultValue=1)
 
         for key, ctrl in ctrlDict.items():
             if key == 'ankle':
                 continue
 
             shape = cmds.listRelatives(ctrl.control, s=True)[0]
-            cmds.connectAttr(ctrlDict['ankle'].control + '.showControls', shape + '.visibility', f=True)
+            cmds.connectAttr(self.mainFootControl  + '.showControls', shape + '.visibility', f=True)
 
         # attact auto foot values to attributes in main control
         self.setupAutos()
         self.setupAutos(val=-360)
         self.setupAutos(val=360)
+
+        # parent controls to ik joints
+        cmds.parentConstraint(ctrlDict['ball'].control, self.chains["IK"][0], mo=True)
+        cmds.parentConstraint(ctrlDict['toes'].control, self.chains["IK"][1], mo=True)
+        cmds.parent(ctrlDict['heel'].root, self.controls_group)
 
         # save dic into current class property
         if letter == 'l':
@@ -198,84 +307,24 @@ class Feet(object):
         if letter == 'r':
             self.rightFoot = ctrlDict
 
-    ###################################################################################################
-    # flips and duplicate the structure to current side to other
-    #
-    def flipAndDuplicate(self, locArray):
-
-        for itm in locArray:
-            cmds.setAttr(itm + '.tx', (cmds.getAttr(itm + '.tx') * -1))
-
-        self.createFootStructure(locArray)
-        self.makeBlend()
-        self.cleanFeet()
 
     ###################################################################################################
     # blending chains
     #
 
-    def makeBlend(self):
+    def flipAndDuplicate(self, locArray):
 
-        sideArray = [itm for itm in cmds.ls('*_ctrl') if itm.startswith(self.currentFoot + '_')]
+        for itm in locArray:
+            cmds.setAttr(itm + '.tx', (cmds.getAttr(itm + '.tx') * -1))
 
-        jnt = self.parent[1:]
-        joint = self.currentFoot + jnt
-
-        foot_1 = cmds.listRelatives(joint)[0]
-        foot_2 = cmds.listRelatives(foot_1)[0]
-
-        footControls = []
-        toesControls = []
-
-        footDummies = []
-        toesDummies = []
-
-        for itm in sideArray:
-            if cmds.attributeQuery('footControl', node=itm, exists=True):
-                footControls.append(itm)
-            if cmds.attributeQuery('toesControl', node=itm, exists=True):
-                toesControls.append(itm)
-
-        for ctrl in footControls:
-            node = cmds.group(name=ctrl + '_footDummy', em=True)
-            cmds.xform(node, ws=True, m=cmds.xform(foot_1, q=True, ws=True, m=True))
-            cmds.parent(node, ctrl)
-            footDummies.append(node)
-
-        for ctrl in toesControls:
-            node = cmds.group(name=ctrl + '_footDummy', em=True)
-            cmds.xform(node, ws=True, m=cmds.xform(foot_2, q=True, ws=True, m=True))
-            cmds.parent(node, ctrl)
-            toesDummies.append(node)
-
-        # orient contraint from dummies to main foot joint and toes joint
-        footCons = cmds.orientConstraint(footDummies, foot_1)[0]
-        toesCons = cmds.orientConstraint(toesDummies, foot_2)[0]
-
-        # connect constraint to attribute holder
-        footConsAtt = cmds.listAttr(footCons)[-2:]
-        toesConsAtt = cmds.listAttr(toesCons)[-2:]
-
-        # foot plus mins average to blending procs
-        plusMinus = cmds.createNode('plusMinusAverage', n=self.currentFoot + '_footBlendPlsMnsAvg')
-        cmds.setAttr(plusMinus + '.operation', 2)
-        cmds.setAttr(plusMinus + '.input2D[0].input2Dx', 1)
-
-        def connectAttributes(constraint, arrayIKFK):
-            for att in arrayIKFK:
-                if '_FK_' in att:
-                    pm.connectAttr(self.currentHolder + '.IK_0_FK_1', constraint + '.' + att, f=True)
-                if '_IK_' in att:
-                    pm.connectAttr(self.currentHolder + '.IK_0_FK_1', plusMinus + '.input2D[1].input2Dx', f=True)
-                    pm.connectAttr(plusMinus + '.output2D.output2Dx', constraint + '.' + att, f=True)
-
-        # call this motherfucker function
-        connectAttributes(footCons, footConsAtt)
-        connectAttributes(toesCons, toesConsAtt)
+        self.create_IK_reverse_foot(locArray)
+        # self.makeBlend()
+        self.cleanFeet()
 
     ###################################################################################################
     # Hide shapes from channel box in for each control in leg system
     #
+
     @tools.undo_cmds
     def hideShapesCB(self, noHideArray=[]):
         feet = [self.leftFoot, self.rightFoot]
@@ -288,9 +337,7 @@ class Feet(object):
                 tools.hideShapesChannelBox(rawControls, exception=noHideArray)
 
     ###################################################################################################
-    # foot rool slider attribute set up ----------- !!!!
-    # i've done a crzy shit here but it works in one system and two at the same time
-    #
+
     def setupFootRoll(self, value=0, force=False):
         # find current main control
         #
@@ -368,10 +415,12 @@ class Feet(object):
                     cmds.setAttr(flipDriven, flipSetAttributeValue)
 
                 cmds.setAttr(cmds.listRelatives(curAuto)[0] + '.ry', 0)
-                cmds.setDrivenKeyframe(curDriven, currentDriver=curDriver, outTangentType='linear', inTangentType='linear', driverValue=value)
+                cmds.setDrivenKeyframe(curDriven, currentDriver=curDriver, outTangentType='linear',
+                                       inTangentType='linear', driverValue=value)
 
                 if flip:
-                    cmds.setDrivenKeyframe(flipDriven, currentDriver=flipDriver, outTangentType='linear', inTangentType='linear', driverValue=value)
+                    cmds.setDrivenKeyframe(flipDriven, currentDriver=flipDriver, outTangentType='linear',
+                                           inTangentType='linear', driverValue=value)
 
             try:
                 # set post and pre infinity for animCurve in driven
@@ -388,85 +437,49 @@ class Feet(object):
 
             finally:
                 cmds.select(clear=True)
-
-    ###################################################################################################
-
     # foot autos for foot motions in channelbox
     #
+
     def setupAutos(self, val=0):
         # this will set up the slider values for foot motions in channelbox
         #
         # find current main control
-        control = self.currentControls['ankle']
+        control = self.mainFootControl
         attributes = [att for att in self.dummyNames if att != 'ankle']
 
         for attr in attributes:
-            driver = '{}.{}'.format(control.control, attr)
+            driver = '{}.{}'.format(control, attr)
             drivenCtrl = self.currentControls[attr]
             driven = cmds.listRelatives(drivenCtrl.control, p=True)[0]
 
             if attr in ['tillOut', 'tillIn']:
-                cmds.addAttr(control.control + '.' + attr, edit=True, minValue=0)
+                cmds.addAttr(control + '.' + attr, edit=True, minValue=0)
                 check = cmds.getAttr(driven + '.limitedChannel')
 
                 if check == 'minimum' and val >= 0:
-                    cmds.setDrivenKeyframe(driven, attribute='rotateX', value=val, currentDriver=driver, outTangentType='linear', inTangentType='linear', driverValue=abs(val))
+                    cmds.setDrivenKeyframe(driven, attribute='rotateX', value=val, currentDriver=driver,
+                                           outTangentType='linear', inTangentType='linear', driverValue=abs(val))
                 if check == 'maximum' and val <= 0:
-                    cmds.setDrivenKeyframe(driven, attribute='rotateX', value=val, currentDriver=driver, outTangentType='linear', inTangentType='linear', driverValue=abs(val))
+                    cmds.setDrivenKeyframe(driven, attribute='rotateX', value=val, currentDriver=driver,
+                                           outTangentType='linear', inTangentType='linear', driverValue=abs(val))
 
             else:
-                cmds.setDrivenKeyframe(driven, attribute='rotateY', value=val, currentDriver=driver, outTangentType='linear', inTangentType='linear', driverValue=val)
+                cmds.setDrivenKeyframe(driven, attribute='rotateY', value=val, currentDriver=driver,
+                                       outTangentType='linear', inTangentType='linear', driverValue=val)
 
             # set post and pre infinity for animCurve in driven
             animCurve = cmds.listConnections(driven, t='animCurve')[0]
             cmds.setAttr(animCurve + '.preInfinity', 1)
             cmds.setAttr(animCurve + '.postInfinity', 1)
 
-###################################################################################################
-# builder function to keep class instances inside of a function and not in global
-
-
-@tools.undo_cmds
-def loader():
-    if cmds.objExists('l_leg_sys_grp'):
-        # cmds.delete('l_leg_sys_grp')
-        pass
-
-    # delete unused nodes
-    mel.eval('MLdeleteUnused;')
-
-    dummies = ['ankle', 'ball', 'toes', 'toes_tip', 'tillIn', 'tillOut', 'heel']
-    # instance:
-    foot = Feet(legEndJoint=LEG_END_JOINT, scaleFK=8)
-    # foot.createLocators(dummies)
-    foot.createFootStructure(dummies)
-    foot.makeBlend()
-    foot.hideShapesCB()
-    foot.setupFootRoll()
-    # foot.flipAndDuplicate(dummies)
 
 ###################################################################################################
 
 
 # IN MODULE TEST:
 if __name__ == '__main__':
-    # loader()
-    dummies = ['ankle', 'ball', 'toes', 'toes_tip', 'tillIn', 'tillOut', 'heel']
-    # instance:
-
-    def run():
-        foot = Feet(legEndJoint=LEG_END_JOINT, scaleFK=8)
-        # foot.createLocators(dummies)
-        foot.createFootStructure(dummies)
-        foot.makeBlend()
-        foot.hideShapesCB()
-        foot.setupFootRoll(force=True)
-
-        return foot
-
-    # foot = run()
-    foot.setupFootRoll(value=-100, force=True)
-    # foot.flipAndDuplicate(dummies)
-    # foot.flipLocators(dummies)
+    foot = Feet(foot_joint="L_foot_01_JNT", hook="L_legEnd_JNT",
+                hook_fk="L_legEnd_FK_CTL", hook_ik="L_leg_IK_CTL",
+                attribute_holder = "L_leg_UI_CTL")
+    foot.build()
     cmds.select(clear=True)
-    pass

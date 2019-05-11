@@ -112,8 +112,8 @@ class Arm(limb.Limb):
         elif cmds.getAttr(chain[0] + '.tx') < 0:
             cmds.move(10, ik_clavicleControl.control + "*Shape" + ".cv[*]", moveZ=True, absolute=True)
 
-        cmds.parent(chain[0], ik_clavicleControl.control)
-        cmds.parent(ik_clavicleControl.root, rigGroup)
+        cmds.parentConstraint(ik_clavicleControl.control, chain[0])
+        cmds.parent(ik_clavicleControl.root, self.ik_controls_group)
 
         self.ik_clavicle_control = ik_clavicleControl
 

@@ -134,6 +134,7 @@ class Control(object):
     # rotate shape
 
     def setAngle(self, angle):
+        angle = angle.lower()
         obj = self.control
 
         if angle == "x":

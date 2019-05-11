@@ -322,7 +322,7 @@ class BuildCharacterRig(object):
                 legJoint = self.r_leg.legEndJoint
 
         foot = feet.Feet(legEndJoint=legJoint, scaleFK=8)
-        foot.createFootStructure(self.footDummies)
+        foot.create_IK_reverse_foot(self.footDummies)
         foot.makeBlend()
 
         if all([self.l_leg, self.r_leg]) == True:

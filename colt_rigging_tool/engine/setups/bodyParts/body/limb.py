@@ -81,7 +81,7 @@ class Limb(object):
         self.limb_modules_groups.append(self.limb_main_grp)
 
         # holder group for main chain Init
-        self.main_grp = cmds.group(name=self.letter + '_' + prefix + '_main_grp', em=True)
+        self.main_grp = cmds.group(name=self.letter + '_' + prefix + '_main_GRP', em=True)
         cmds.parent(self.inputChain[0], self.main_grp)
         cmds.parent(self.main_grp, self.limb_main_grp)
 
@@ -234,6 +234,7 @@ class Limb(object):
             return
 
         ik_group = cmds.group(n=self.letter + '_' + self.prefix + '_IK_GRP', em=True)
+        self.ik_controls_group = cmds.group(n=self.letter + '_' + self.prefix + '_IK_controls_GRP', em=True)
 
         # this returns a pymel object. get object.name()
         ik_main_jnt = tools.copySkeleton(self.inputChain[0], 'IK')
@@ -297,6 +298,7 @@ class Limb(object):
         ik_control = control.Control(prefix=self.letter + '_' + self.prefix + '_IK', shape=2, angle='x',
                                      translateTo=ik_hier[-1], rotateTo=ik_hier[-1], scale=self.scale * 6)
 
+        cmds.parent(ik_control.root, self.ik_controls_group)
         cmds.parentConstraint(ik_control.control, ik_handle[0])
         cmds.parent(ik_main_jnt.name(), ik_group)
 
@@ -430,7 +432,7 @@ class Limb(object):
         # collect data:
         dummy_A = cmds.group(n=self.letter + '_' + self.prefix + 'ikStretchMeasurePoint_A', em=True)
         cmds.delete(cmds.parentConstraint(self.ik_hier[-3], dummy_A))
-        cmds.parent(dummy_A, cmds.listRelatives(self.ik_hier[0], p=True)[0])
+        cmds.parent(dummy_A, self.ik_group)
 
         topGrp = dummy_A
         handle = self.ik_control.control
