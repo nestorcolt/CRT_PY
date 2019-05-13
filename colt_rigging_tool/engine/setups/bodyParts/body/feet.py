@@ -97,6 +97,9 @@ class Feet(object):
     ######################################################################################################
     def hook_to_leg(self):
 
+        if not self.input_attribute_holder or not cmds.objExists(self.input_attribute_holder):
+            return
+
         if self.ik_hook and self.fk_hook:
             if cmds.objExists(self.ik_hook) or cmds.objExists(self.fk_hook):
                 cmds.parentConstraint(self.ik_hook, self._ik_control, mo=True)
@@ -163,10 +166,9 @@ class Feet(object):
         self.create_IK_reverse_foot(self.dummyNames)
         self.create_FK_foot()
         self.hook_to_leg()
-        # self.makeBlend()
         # self.hideShapesCB()
         # self.setupFootRoll()
-        # self.flipAndDuplicate(dummies)
+
 
     ######################################################################################################
 
@@ -316,10 +318,6 @@ class Feet(object):
 
         for itm in locArray:
             cmds.setAttr(itm + '.tx', (cmds.getAttr(itm + '.tx') * -1))
-
-        self.create_IK_reverse_foot(locArray)
-        # self.makeBlend()
-        self.cleanFeet()
 
     ###################################################################################################
     # Hide shapes from channel box in for each control in leg system

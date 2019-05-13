@@ -212,6 +212,10 @@ class Limb(object):
         # reverse arrays again to math order upside down
         fk_hier.reverse()
 
+        #
+        if world_orient:
+            cmds.rotate(0,fk_controls[-1].root, rotateY=True, absolute=True, worldSpace=True)
+
         # populate class fk properties
         self.fk_group = fk_group
         self.fk_hier = fk_hier
@@ -324,6 +328,10 @@ class Limb(object):
         # set orient const to ik control to hand or wrist
         cmds.orientConstraint(ik_control.control, ik_hier[-1])
         cmds.delete(dummie_ik_aim)
+
+        #
+        if world_orient:
+            cmds.rotate(0,ik_control.root, rotateY=True, absolute=True, worldSpace=True)
 
         return {'ik_group': ik_group, 'ik_handle': ik_handle, 'ik_hier': ik_hier, 'poleVector': poleVec}
 

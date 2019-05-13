@@ -8,13 +8,14 @@ import json
 #
 from colt_rigging_tool.engine.utils import tools, controls_info
 from colt_rigging_tool.engine.setups.modules import structure
-from colt_rigging_tool.engine.setups.bodyParts.body import arms, legs
+from colt_rigging_tool.engine.setups.bodyParts.body import arms, legs, feet
 from colt_rigging_tool.engine.asset.deformation import deformModule
 #
 reload(tools)
 reload(structure)
 reload(arms)
 reload(legs)
+reload(feet)
 reload(deformModule)
 reload(controls_info)
 
@@ -53,18 +54,34 @@ def initChar(asset_name=None, debug = 1):
 
 
     # build rig #################################################################
-    for side in "LR":
+    for idx, side in enumerate("LR"):
+        # ARMS
         clavicle_joint = "{}_clavicle_JNT".format(side)
         hand_joint = "{}_hand_JNT".format(side)
-        #
         arm = arms.Arm(armJoint=clavicle_joint, scaleFK=8)
         arm.build(hand_join=hand_joint)
         #
-        #
+
+        # LEGS
         upperLeg_joint = "{}_upperLeg_JNT".format(side)
         leg = legs.Leg(legJoint=upperLeg_joint, scaleFK=8)
         leg.build()
 
+        # FEET
+        hook = "{}_legEnd_JNT".format(side)
+        foot = feet.Feet(foot_joint="{}_foot_01_JNT".format(side),
+                         hook=hook,
+                         hook_fk=hook,
+                         hook_ik=hook,
+                         attribute_holder="{}_leg_UI_CTL".format(side))
+
+        foot.build()
+        #
+        if idx == 0:
+            foot.flipAndDuplicate(foot.dummyNames)
+
+        else:
+            foot.cleanFeet()
 
     #
     # DONE!

@@ -1,8 +1,8 @@
 ###################################################################################################
 import maya.cmds as cmds
 import pymel.core as pm
-from engine.setups.controls import control
-from engine.utils import tools
+from colt_rigging_tool.engine.setups.controls import control
+from colt_rigging_tool.engine.utils import tools
 reload(control)
 reload(tools)
 """
@@ -15,108 +15,119 @@ reload(tools)
 ###################################################################################################
 # Globals:
 GLOBAL_SCALE = 1.0
-SCENE_OBJECT_TYPE = 'rig'
 
-###################################################################################################
+class Rig_structure():
 
+    def __init__(self,
+                 asset_name,
+                 scale=GLOBAL_SCALE,
+                 geometry_group='',
+                 skin_geo="pCube1"):
 
-class Base():
-
-    def __init__(self, characterName, scale=GLOBAL_SCALE, mesh='', parentJoint='', geoList=[], builder=''):
         # Sanity check
         print('__init__ from "Base" class to build rig folder structure')
 
+        self.skin = skin_geo
+
         # create "folder structure"
-        self.global_group = cmds.group(name=characterName + '_globalSystem_grp', em=True)
-        self.components_group = cmds.group(name=characterName + '_components_grp', em=True)
-        self.geometry_group = cmds.group(name=characterName + '_geometries_grp', em=True)
-        self.rigging_group = cmds.group(name=characterName + '_rigging_grp', em=True)
-        self.joints_group = cmds.group(name=characterName + '_joints_grp', em=True)
-        self.noXform_group = cmds.group(name=characterName + '_noXform_grp', em=True)
-        self.noXformHead_group = cmds.group(name=characterName + '_noXformHead_grp', em=True)
-        self.noXformBodybody_group = cmds.group(name=characterName + '_noXformBody_grp', em=True)
-        self.facialRig_group = cmds.group(name=characterName + '_facialRig_grp', em=True)
-        self.bodyRig_group = cmds.group(name=characterName + '_bodyRig_grp', em=True)
+        self.root_group = cmds.group(name=asset_name + '_rig_GRP', em=True)
+        self.geometry_group = cmds.group(name= 'C_geometries_GRP', em=True)
+        self.modules_group = cmds.group(name='C_modules_GRP', em=True)
+        #
+        self.body_rig_group = cmds.group(name='C_body_rig_GRP', em=True)
+        self.body_skell_group = cmds.group(name='C_body_skell_GRP', em=True)
+        #
+        self.face_rig_group = cmds.group(name='C_face_rig_GRP', em=True)
+        self.face_skell_group = cmds.group(name='C_face_skell_GRP', em=True)
+        #
+        self.face_geometries_group = cmds.createNode("transform", n="C_face_geo_GRP")
+        self.rig_blend_group = cmds.createNode("transform", n="C_rigBlend_GRP")
 
-        # parenting I
-        cmds.parent(self.components_group, self.global_group)
-        cmds.parent(self.geometry_group, self.rigging_group, self.joints_group, self.noXform_group, self.components_group)
-        cmds.parent(self.noXformHead_group, self.noXformBodybody_group, self.noXform_group)
-        cmds.parent(self.facialRig_group, self.bodyRig_group, self.rigging_group)
+        cmds.parent(self.modules_group, self.root_group)
+        cmds.parent(self.geometry_group, self.root_group)
+        cmds.parent(self.face_rig_group, self.modules_group)
+        cmds.parent(self.face_skell_group, self.modules_group)
+        cmds.parent(self.body_rig_group, self.modules_group)
+        cmds.parent(self.body_skell_group, self.modules_group)
+        cmds.parent(self.rig_blend_group, self.root_group)
+        cmds.parent(self.face_geometries_group, self.root_group)
 
-        # no xform group set attribute
-        cmds.setAttr(self.noXform_group + '.it', False, lock=True)
+        char_name_attr = 'assetName'
 
-        reorder = [self.geometry_group, self.joints_group, self.noXform_group, self.rigging_group]
-        for grp in reorder:
-            cmds.reorder(grp, back=True)
+        for att in [char_name_attr]:
+            cmds.addAttr(self.root_group, ln=att, dt='string')
 
-        char_name_attr = 'characterName'
-        scene_objectType_attr = 'scene_objectType'
+        cmds.setAttr(self.root_group + '.' + char_name_attr, asset_name, type='string', lock=True)
 
-        for att in [char_name_attr, scene_objectType_attr]:
-            cmds.addAttr(self.global_group, ln=att, dt='string')
 
-        cmds.setAttr(self.global_group + '.' + char_name_attr, characterName, type='string', lock=True)
-        cmds.setAttr(self.global_group + '.' + scene_objectType_attr, SCENE_OBJECT_TYPE, type='string', lock=True)
+        # geometry version
+        cmds.addAttr(self.root_group, ln="rigVersion", dt='string', k=False)
+        cmds.addAttr(self.root_group, ln="geometryVersion", dt='string', k=False)
+
+        # connect messages
+        cmds.addAttr(self.root_group, ln="skinGeo", at='message', k=False)
+        if self.skin and cmds.objExists(self.skin):
+            cmds.connectAttr("{}.message".format(self.skin), "{}.skinGeo".format(self.root_group), f=True)
+            cmds.setAttr("{}.skinGeo".format(self.root_group), lock=True)
 
         # make controls
-        global_control_obj = None
+        self.main_control = None
 
-        if mesh and cmds.objExists(mesh):
-            global_control_obj = control.Control(prefix=characterName + '_global', scale=tools.get_boundingBoxSize(mesh), translateTo=mesh, parent=self.bodyRig_group, lockChannels=['v'])
-        else:
-            global_control_obj = control.Control(prefix=characterName + '_global', scale=scale * 40, parent=self.bodyRig_group, lockChannels=['v'])
+
+        self.main_control = control.Control(prefix='C_main',
+                                            scale=tools.get_boundingBoxSize(skin_geo) * 2,
+                                            translateTo=skin_geo, parent=self.root_group,
+                                            lockChannels=['v'],
+                                            color=13)
+
+        self.walk_control = control.Control(prefix='C_anim_walk',
+                                            scale=tools.get_boundingBoxSize(skin_geo) * 1.5,
+                                            parent=self.main_control.control, lockChannels=['v'])
+
+
+
+
+        # separator user defiine attrs
+        cmds.addAttr(self.main_control.control, ln='UserDefineAttrs', at='enum', enumName='________:__', k=True)
+        cmds.setAttr("{}.UserDefineAttrs".format(self.main_control.control), lock=True)
 
         # add global scale attribute
-        cmds.addAttr(global_control_obj.control, ln='globalScale', at='float', k=True, defaultValue=1.0, minValue=0.2)
+        cmds.addAttr(self.main_control.control, ln='globalScale', at='float', k=True, defaultValue=1.0, minValue=0.2)
         for axis in 'xyz':
-            cmds.connectAttr(global_control_obj.control + '.globalScale', global_control_obj.control + '.s%s' % axis)
+            cmds.connectAttr(self.main_control.control + '.globalScale', self.main_control.control + '.s%s' % axis)
 
-        main_visibility_attr = ['modelVis', 'jointsVis']
-        main_display_attr = ['modelDisplay', 'jointsDisplay']
-        obj_to_add_attrs = [self.geometry_group, self.joints_group]
+        main_visibility_attr = ['geoVisibility']
+        main_display_attr = ['geoDisplayType']
+
+        obj_to_add_attrs = [self.geometry_group]
 
         # add rig visibility connections
         for at, obj in zip(main_visibility_attr, obj_to_add_attrs):
-            cmds.addAttr(global_control_obj.control, ln=at, at='enum', enumName='off:on', k=True, defaultValue=True)
-            cmds.setAttr(global_control_obj.control + '.' + at, cb=True)
-            cmds.connectAttr(global_control_obj.control + '.' + at, obj + '.v')
+            cmds.addAttr(self.main_control.control, ln=at, at='enum', enumName='off:on', k=True, defaultValue=True)
+            cmds.setAttr(self.main_control.control + '.' + at, cb=True)
+            cmds.connectAttr(self.main_control.control + '.' + at, obj + '.v')
 
         # add rig display connections
         for at, obj in zip(main_display_attr, obj_to_add_attrs):
-            cmds.addAttr(global_control_obj.control, ln=at, at='enum', enumName='normal:template:reference', k=True)
-            cmds.setAttr(global_control_obj.control + '.' + at, cb=True)
+            cmds.addAttr(self.main_control.control, ln=at, at='enum', enumName='normal:template:reference', k=True)
+            cmds.setAttr(self.main_control.control + '.' + at, cb=True)
             cmds.setAttr(obj + '.ove', True)
-            cmds.connectAttr(global_control_obj.control + '.' + at, obj + '.ovdt')
+            cmds.connectAttr(self.main_control.control + '.' + at, obj + '.ovdt')
 
-        global_control_obj.lockChannels = ['s']
-        global_control_obj.lock_control_channels()
+        self.main_control.lockChannels = ['s']
+        self.main_control.lock_control_channels()
 
-        cmds.addAttr(global_control_obj.control, shortName='cntRig', longName='ConnectRig', at='bool', defaultValue=1, k=True)
-        cmds.setAttr(global_control_obj.control + '.ConnectRig', cb=True)
+        # reorder main groups
+        cmds.reorder(self.modules_group, front=True)
+        cmds.reorder(self.main_control.root, front=True)
+        cmds.reorder(self.geometry_group, front=True)
 
-        if parentJoint:
-            cmds.parent(parentJoint, self.joints_group)
+        if geometry_group and cmds.objExists(geometry_group):
+            cmds.parent(geometry_group, self.geometry_group)
 
-        if geoList:
-            cmds.parent(geoList, self.geometry_group)
-
-        if builder:
-            cmds.delete(builder)
-
-        ############
-        # Public members
-        self.global_control_obj = global_control_obj
-
-
-###################################################################################################
-
-
+    ###################################################################################################
 
 ###################################################################################################
 if __name__ == '__main__':
-    run = Base
-    build = tools.getBuilder()
-    run('Mark', mesh='mark_body_geo', parentJoint=build['joint'], geoList=build['geos'], builder=build['builder'])
+    run = Rig_structure('Mark', geometry_group='geos')
     cmds.select(clear=True)

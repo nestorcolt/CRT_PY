@@ -60,8 +60,8 @@ class Leg(limb.Limb):
     @tools.undo_cmds
     def build(self, twist_chain_len=5):
 
-        self.makeFK(simple_fk=True, world_orient=False)
-        self.makeIK(world_orient=False)
+        self.makeFK(simple_fk=True, world_orient=True)
+        self.makeIK(world_orient=True)
         # #
         self.groupSystem()
         self.makeBlending()

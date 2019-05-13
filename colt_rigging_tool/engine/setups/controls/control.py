@@ -32,7 +32,8 @@ class Control(object):
             parent='',
             shape=1,
             angle='y',
-            lockChannels=['s', 'v']):
+            lockChannels=['s', 'v'],
+            color = False):
 
         ###################################################################################################
         # @param shape : 1 = circle
@@ -71,6 +72,7 @@ class Control(object):
         self.auto = result[1]
         self.lockChannels = lockChannels
         self._angle = angle
+        self.color = color
 
         # translate control
         if cmds.objExists(translateTo):
@@ -89,6 +91,15 @@ class Control(object):
         self.overide_color()
         self.lock_control_channels()
         self.setAngle(self._angle)
+
+        self.control = control_object
+
+        if self.color:
+            cmds.setAttr("{}.ove".format(control_object))
+            control_shape = cmds.listRelatives(self.control, shapes=True)
+            [cmds.setAttr(shape + '.ovc', self.color) for shape in control_shape]
+
+
 
     ###################################################################################################
     # lock control channels
