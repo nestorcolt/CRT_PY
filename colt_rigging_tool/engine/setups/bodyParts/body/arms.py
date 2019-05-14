@@ -1,4 +1,6 @@
 import collections
+import inspect
+
 import maya.cmds as cmds
 import pymel.core as pm
 import maya.mel as mel
@@ -66,7 +68,9 @@ class Arm(limb.Limb):
 
         # unparentHandFromSystem
         self.hand = {}
-        self.hand_module_grp = None
+        self.hand_rig_group = None
+        self.hand_controls_group = None
+        self.hand_skell_group = None
 
     ######################################################################################################
 
@@ -80,7 +84,6 @@ class Arm(limb.Limb):
         self.makeBlending()
 
         self.makeIkClavicle(chain=self.ik_hier, rigGroup=self.ik_group)
-        self.create_deformation_chain()
 
         self.makeFkStretchSystem()
         self.makeIkStretchSystem()
@@ -89,14 +92,15 @@ class Arm(limb.Limb):
         #
         self.collectTwistJoints(limbJoints=self.inputChain[1:-1], index=twist_chain_len)
         self.makeTwistSystem()
-
         #
         if hand_join:
             self.makeHand(hand_joint=hand_join)
             self.make_auto_fist(force=True)
+            self.create_hand_skell_group()
         #
         self.hideShapesCB()
         self.controlsVisibilitySetup()
+        self.skell_group = self.create_deformation_chain()
         self.clean()
 
         ######################################################################################################
@@ -134,6 +138,11 @@ class Arm(limb.Limb):
 
     ######################################################################################################
 
+    def create_hand_skell_group(self):
+        self.hand_skell_group = tools.create_deformation_joints_for_module(module=self.hand_rig_group)
+
+    ######################################################################################################
+
     def makeHand(self, hand_joint = ""):
 
         if not hand_joint:
@@ -151,6 +160,7 @@ class Arm(limb.Limb):
 
         topControl = control.Control(prefix=handName + '_UI', translateTo=hand, rotateTo=hand,
                                      shape=4, scale=self.scale * 2, lockChannels=['t', 'r', 's', 'v'])
+        cmds.parent(topControl.root, hand_control_grp)
 
         # check X value
         child = cmds.listRelatives(hand)[0]
@@ -200,7 +210,7 @@ class Arm(limb.Limb):
         #
         self.handTopCtrl = topControl
         self.fingers = controlsArray
-        self.hand_module_grp = handGrp
+        self.hand_rig_group = handGrp
 
         # make hand float attributes for channel box setting
         attributes = ['thumb', 'index', 'middle', 'ring', 'pinky']
@@ -223,7 +233,8 @@ class Arm(limb.Limb):
             cmds.connectAttr(topControl.control + '.showControls', shape + '.visibility', f=True)
 
         self.fingers_auto_dic = auto_fist
-        self.limb_modules_groups.append(self.hand_module_grp)
+        self.hand_controls_group = hand_control_grp
+        self.limb_modules_groups.append(self.hand_rig_group)
 
     ###################################################################################################
     # create the slider float controls over the hand top control
@@ -284,12 +295,18 @@ class Arm(limb.Limb):
 
 
 # IN MODULE TEST:
-if __name__ == '__main__':
-    tools.re_open_current_file()
-    # instance:
-    arm = Arm(armJoint=CLAVICLE_JOINT, scaleFK=8)
-    arm.build(hand_join=HAND_JOINT)
-    # arm.make_auto_fist(value=-20, force=True)
-    cmds.select(clear=True)
-    # del arm
-    pass
+# if __name__ == '__main__':
+# tools.re_open_current_file()
+# instance:
+# arm = Arm(armJoint=CLAVICLE_JOINT, scaleFK=8)
+# arm.build(hand_join=HAND_JOINT)
+# arm.make_auto_fist(value=-20, force=True)
+# cmds.select(clear=True)
+# del arm
+# pass
+# rig = filter(lambda itm: itm.endswith("skell_group"),
+#              [obj for obj in vars(arm).keys()])
+#
+# print(vars(arm))
+#
+# print(rig)

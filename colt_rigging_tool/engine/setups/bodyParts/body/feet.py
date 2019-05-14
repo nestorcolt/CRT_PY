@@ -50,8 +50,8 @@ class Feet(object):
 
         self.prefix = prefix
         self.scale = scale
-
         self.scaleIK = scaleIK
+
         # general limb parent
         self.parent = hook
         self.ik_hook = hook_ik
@@ -66,13 +66,13 @@ class Feet(object):
         self.dummyPos = []
         # feet dictionaries
         self.leftFoot = None
-
         self.rightFoot = None
         #
         # current foot
         self.currentFoot = None
 
         self.currentControls = None
+
         # current attribute holder
         self.currentHolder = None
 
@@ -83,18 +83,20 @@ class Feet(object):
         #
         self.ik_group =  cmds.createNode("transform", n="{}_foot_IK_GRP".format(self.letter))
         self.fk_group = cmds.createNode("transform", n="{}_foot_FK_GRP".format(self.letter))
-        self.main_group = cmds.createNode("transform", n="{}_foot_MAIN_GRP".format(self.letter))
+        self.main_group = cmds.createNode("transform", n="{}_foot_main_GRP".format(self.letter))
+        self.skell_group = None
         #
-        self.foot_group = cmds.createNode("transform", n="{}_foot_rig_GRP".format(self.letter))
+        self.rig_group = cmds.createNode("transform", n="{}_foot_rig_GRP".format(self.letter))
         self.controls_group = cmds.createNode("transform", n="{}_foot_controls_GRP".format(self.letter))
         self._fk_controls = []
 
-        cmds.parent(self.ik_group, self.foot_group)
-        cmds.parent(self.fk_group, self.foot_group)
-        cmds.parent(self.main_group, self.foot_group)
+        cmds.parent(self.ik_group, self.rig_group)
+        cmds.parent(self.fk_group, self.rig_group)
+        cmds.parent(self.main_group, self.rig_group)
         cmds.parent(self._ik_control, self.controls_group)
 
     ######################################################################################################
+    
     def hook_to_leg(self):
 
         if not self.input_attribute_holder or not cmds.objExists(self.input_attribute_holder):
@@ -120,7 +122,7 @@ class Feet(object):
 
     def create_attribute_holder(self):
         self.currentHolder = cmds.createNode("transform", n="{}_foot_attributeHolder_node".format(self.letter))
-        cmds.parent(self.currentHolder, self.foot_group)
+        cmds.parent(self.currentHolder, self.rig_group)
         # create attribute
         if not pm.attributeQuery('IK_0_FK_1', node=self.currentHolder, exists=True):
             pm.addAttr(self.currentHolder, k=True, shortName='IKFK', longName='IK_0_FK_1',
@@ -166,6 +168,7 @@ class Feet(object):
         self.create_IK_reverse_foot(self.dummyNames)
         self.create_FK_foot()
         self.hook_to_leg()
+        self.skell_group = self.create_deformation_chain()
         # self.hideShapesCB()
         # self.setupFootRoll()
 
@@ -470,6 +473,10 @@ class Feet(object):
             cmds.setAttr(animCurve + '.preInfinity', 1)
             cmds.setAttr(animCurve + '.postInfinity', 1)
 
+    ######################################################################################################
+
+    def create_deformation_chain(self):
+        return tools.create_deformation_joints_for_module(self.rig_group)
 
 ###################################################################################################
 

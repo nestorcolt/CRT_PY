@@ -66,8 +66,6 @@ class Leg(limb.Limb):
         self.groupSystem()
         self.makeBlending()
         #
-        self.create_deformation_chain()
-        #
         self.makeFkStretchSystem()
         self.makeIkStretchSystem()
 
@@ -78,6 +76,7 @@ class Leg(limb.Limb):
         # #
         self.hideShapesCB()
         self.controlsVisibilitySetup()
+        self.skell_group = self.create_deformation_chain()
         self.clean()
 
         ######################################################################################################

@@ -8,7 +8,7 @@ import json
 #
 from colt_rigging_tool.engine.utils import tools, controls_info
 from colt_rigging_tool.engine.setups.modules import structure
-from colt_rigging_tool.engine.setups.bodyParts.body import arms, legs, feet
+from colt_rigging_tool.engine.setups.bodyParts.body import arms, legs, feet, spine
 from colt_rigging_tool.engine.asset.deformation import deformModule
 #
 reload(tools)
@@ -18,7 +18,7 @@ reload(legs)
 reload(feet)
 reload(deformModule)
 reload(controls_info)
-
+reload(spine)
 
 ###################################################################################################
 # GLOBALS:
@@ -49,11 +49,25 @@ def initChar(asset_name=None, debug = 1):
     mc.file(builder_path, open=True, f=True)
     mc.viewFit()
 
-    # INFO ######################################################################
+    #
+    body_modules = []
 
+    # INFO ######################################################################
+    rig = structure.Rig_structure(asset_name='kaki',
+                                  geometry_group='geometries_grp',
+                                  skin_geo="C_body_geo")
 
 
     # build rig #################################################################
+
+    ############
+    # Build spine
+    charSpine = spine.False_IKFK_spine(joints=["C_hip_JNT", "C_spine_05_JNT"], scaleIK=4, scaleFK=20)
+    body_modules.append(charSpine)
+
+    ###########
+    #  Build limbs
+
     for idx, side in enumerate("LR"):
         # ARMS
         clavicle_joint = "{}_clavicle_JNT".format(side)
@@ -82,6 +96,15 @@ def initChar(asset_name=None, debug = 1):
 
         else:
             foot.cleanFeet()
+
+        body_modules.append(arm)
+        body_modules.append(leg)
+        body_modules.append(foot)
+
+
+    # merge body to rig system
+    for module in body_modules:
+        rig.include_modules(module=module)
 
     #
     # DONE!

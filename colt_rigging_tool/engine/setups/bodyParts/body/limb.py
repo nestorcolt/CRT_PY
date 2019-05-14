@@ -76,14 +76,17 @@ class Limb(object):
 
         #
         # holder group Init
-        self.limb_main_grp = cmds.group(name=self.letter + '_' + prefix + '_rig_GRP', em=True)
+        self.rig_group = cmds.group(name=self.letter + '_' + prefix + '_rig_GRP', em=True)
+        self.controls_group = cmds.group(name=self.letter + '_' + prefix + '_controls_GRP', em=True)
+        self.skell_group = None
         self.limb_modules_groups = []
-        self.limb_modules_groups.append(self.limb_main_grp)
+        self.limb_modules_groups.append(self.rig_group)
 
         # holder group for main chain Init
         self.main_grp = cmds.group(name=self.letter + '_' + prefix + '_main_GRP', em=True)
         cmds.parent(self.inputChain[0], self.main_grp)
-        cmds.parent(self.main_grp, self.limb_main_grp)
+        cmds.parent(self.main_grp, self.rig_group)
+
 
         ######################################################################################################
         # create shape attribute holder
@@ -92,7 +95,8 @@ class Limb(object):
         self.attributeHolder = self.attributeHolder_obj.name()
         cb_attrs = self.attributeHolder_obj.listAttr(k=True)
         cmds.parentConstraint(self.inputChain[-1], self.attributeHolder)
-        cmds.parent(self.attributeHolder, self.limb_main_grp)
+        cmds.parent(self.attributeHolder, self.rig_group)
+        cmds.parent(self.attributeHolder, self.controls_group)
 
         tools.overrideColor(self.attributeHolder, "red", single=True)
         cmds.scale(scale * 4, scale * 4, scale * 4, self.attributeHolder + "*Shape" + ".cv[*]", relative=True)
@@ -132,11 +136,13 @@ class Limb(object):
     def groupSystem(self):
         #
         if self.checkFK and not self.groupedFK:
-            cmds.parent(self.fk_group, self.limb_main_grp)
+            cmds.parent(self.fk_group, self.rig_group)
+            cmds.parent(self.fk_controls[0].root, self.controls_group)
             self.groupedFK = True
 
         if self.checkIK and not self.groupedIK:
-            cmds.parent(self.ik_group, self.attachLineGrp, self.limb_main_grp)
+            cmds.parent(self.ik_group, self.attachLineGrp, self.rig_group)
+            cmds.parent(self.ik_controls_group, self.poleVector.root,  self.controls_group)
             self.groupedIK = True
 
     ###################################################################################################
@@ -590,7 +596,7 @@ class Limb(object):
                 get_sign = lambda x: (1, -1)[x < 0]
                 cmds.aimConstraint(cmds.listRelatives(jnt)[0], grp, aimVector=(get_sign(x_val), 0, 0))
                 cmds.parent(twist[0], grp)
-                cmds.parent(grp, self.limb_main_grp)
+                cmds.parent(grp, self.rig_group)
                 #
                 for ch in 'XYZ':
                     cmds.setAttr(twist[0] + '.jointOrient%s' % ch, 0)
@@ -683,7 +689,6 @@ class Limb(object):
     ######################################################################################################
 
     def create_deformation_chain(self):
-        for module in self.limb_modules_groups:
-            tools.create_deformation_joints_for_module(module)
+        return tools.create_deformation_joints_for_module(self.rig_group)
 
 ######################################################################################################

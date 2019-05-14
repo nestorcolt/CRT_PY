@@ -34,7 +34,7 @@ def getJointHier(startJoint, endJoint):
 
 ######################################################################################################
 
-class SpineStretch(object):
+class False_IKFK_spine(object):
     """
 
         Description: spine must be 6 joint spine chain to work propertly
@@ -65,7 +65,7 @@ class SpineStretch(object):
 
         #
         # add instance
-        SpineStretch.instances.append(self)
+        False_IKFK_spine.instances.append(self)
 
         self.name = name
         #
@@ -135,8 +135,9 @@ class SpineStretch(object):
         self.curve = spine_curve
         self.COG_control = None
         self.spineAnimCurve = None
-        self.spine_grp = None
         self.skell_group = None
+        self.rig_group= cmds.createNode("transform", n="C_spine_rig_GRP")
+        self.controls_group = cmds.createNode("transform", n="C_spine_controls_GRP")
 
         # execute methods
         nodes = self.create_pointOnCurve()
@@ -166,7 +167,7 @@ class SpineStretch(object):
                    IKcontrolsArray[-1].control + ".cv[*]", relative=True)
 
         # make controls group
-        self.controls_group = cmds.createNode("transform", n="C_spine_controls_GRP")
+
         cmds.parent(FKcontrolsArray[0].root, self.controls_group)
         cmds.select(FKcontrolsArray[0].control)
         tools.renameFamily('C_COG')
@@ -271,8 +272,7 @@ class SpineStretch(object):
 
         """
 
-        spine_grp = cmds.group(n='C_spine_rig_GRP', em=True)
-        self.spine_grp = spine_grp
+        spine_grp= self.rig_group
         self.include_spine_joints()
         #
         objects = self.targets[:]
@@ -290,9 +290,9 @@ class SpineStretch(object):
     ######################################################################################################
 
     def create_deformation_chain(self):
-        return tools.create_deformation_joints_for_module(self.spine_grp)
+        return tools.create_deformation_joints_for_module(self.rig_group)
 
 ###################################################################################################
 
 if __name__ == '__main__':
-    charSpine = SpineStretch(joints=["joint1_JNT", "joint6_JNT"], scaleIK=4, scaleFK=20)
+    charSpine = False_IKFK_spine(joints=["joint1_JNT", "joint6_JNT"], scaleIK=4, scaleFK=20)

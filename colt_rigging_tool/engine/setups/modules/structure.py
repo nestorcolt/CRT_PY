@@ -22,12 +22,16 @@ class Rig_structure():
                  asset_name,
                  scale=GLOBAL_SCALE,
                  geometry_group='',
-                 skin_geo="pCube1"):
+                 skin_geo=None):
 
         # Sanity check
         print('__init__ from "Base" class to build rig folder structure')
 
         self.skin = skin_geo
+
+        if not skin_geo or skin_geo is None:
+            cmds.error("Must pass main skin geometry name")
+            return
 
         # create "folder structure"
         self.root_group = cmds.group(name=asset_name + '_rig_GRP', em=True)
@@ -42,6 +46,7 @@ class Rig_structure():
         #
         self.face_geometries_group = cmds.createNode("transform", n="C_face_geo_GRP")
         self.rig_blend_group = cmds.createNode("transform", n="C_rigBlend_GRP")
+        self.controls_group = cmds.createNode("transform", n="C_controls_GRP")
 
         cmds.parent(self.modules_group, self.root_group)
         cmds.parent(self.geometry_group, self.root_group)
@@ -51,6 +56,7 @@ class Rig_structure():
         cmds.parent(self.body_skell_group, self.modules_group)
         cmds.parent(self.rig_blend_group, self.root_group)
         cmds.parent(self.face_geometries_group, self.root_group)
+
 
         char_name_attr = 'assetName'
 
@@ -75,13 +81,13 @@ class Rig_structure():
 
 
         self.main_control = control.Control(prefix='C_main',
-                                            scale=tools.get_boundingBoxSize(skin_geo) * 2,
-                                            translateTo=skin_geo, parent=self.root_group,
+                                            scale=tools.get_boundingBoxSize(skin_geo) * 1.5,
+                                            parent=self.root_group,
                                             lockChannels=['v'],
                                             color=13)
 
         self.walk_control = control.Control(prefix='C_anim_walk',
-                                            scale=tools.get_boundingBoxSize(skin_geo) * 1.5,
+                                            scale=tools.get_boundingBoxSize(skin_geo) * 1.1,
                                             parent=self.main_control.control, lockChannels=['v'])
 
 
@@ -116,6 +122,7 @@ class Rig_structure():
 
         self.main_control.lockChannels = ['s']
         self.main_control.lock_control_channels()
+        cmds.parent(self.controls_group, self.walk_control.control)
 
         # reorder main groups
         cmds.reorder(self.modules_group, front=True)
@@ -126,6 +133,25 @@ class Rig_structure():
             cmds.parent(geometry_group, self.geometry_group)
 
     ###################################################################################################
+
+    def include_modules(self, body=True, module=None):
+        if module is not None:
+            directories = vars(module).keys()
+            rig = [itm for itm in directories if itm.endswith("rig_group")]
+            skell = [itm for itm in directories if itm.endswith("skell_group")]
+            controls = [getattr(module, itm) for itm in directories if itm.endswith("controls_group")]
+            print(module)
+            print(rig)
+            print(skell)
+            print(controls)
+            [cmds.parent(itm, self.controls_group) for itm in controls]
+
+            if body:
+               [cmds.parent(getattr(module, itm), self.body_rig_group) for itm in rig]
+               [cmds.parent(getattr(module, itm), self.body_skell_group) for itm in skell]
+            else:
+                [cmds.parent(getattr(module, itm), self.face_rig_group) for itm in rig]
+                [cmds.parent(getattr(module, itm), self.face_skell_group) for itm in skell]
 
 ###################################################################################################
 if __name__ == '__main__':
