@@ -522,6 +522,7 @@ def create_deformation_joints_for_module(module=None):
         #
         mc.parentConstraint(jnt, new_name)
 
+    return skell_grp
 
 ######################################################################################################
 

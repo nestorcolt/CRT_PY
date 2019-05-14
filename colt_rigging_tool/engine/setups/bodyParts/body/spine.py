@@ -1,8 +1,8 @@
 import maya.cmds as cmds
 import pymel.core as pm
-from engine.setups.controls import control
+from colt_rigging_tool.engine.setups.controls import control
+from colt_rigging_tool.engine.utils import tools
 from weakref import WeakSet
-from engine.utils import tools
 reload(control)
 reload(tools)
 
@@ -32,6 +32,8 @@ def getJointHier(startJoint, endJoint):
     return chain
 
 
+######################################################################################################
+
 class SpineStretch(object):
     """
 
@@ -43,7 +45,15 @@ class SpineStretch(object):
     instances = []
     #
 
-    def __init__(self, rigObject='', joints=[], name='spineClass', prefix='spine', scale=1.0, scaleIK=1.0, scaleFK=1.0):
+    def __init__(self,
+                 joints=[],
+                 name='spineClass',
+                 prefix='spine',
+                 scale=1.0,
+                 scaleIK=1.0,
+                 scaleFK=1.0,
+                 controls_parent=None,
+                 module_parent=None):
 
         print(
             """
@@ -67,15 +77,20 @@ class SpineStretch(object):
 
         # create spine curve
         # here is where it's defined how many cvs will have the curve
-        spine_curve = cmds.curve(n=prefix + '_curve', d=1, p=[posArray[0], posArray[1], posArray[2], posArray[3], posArray[4], posArray[5]], k=[0, 1, 2, 3, 4, 5])
+        spine_curve = cmds.curve(n=prefix + '_curve', d=1, p=posArray, k=range(len(posArray)))
         cmds.rebuildCurve(spine_curve, d=3, keepRange=0, keepControlPoints=True)
         vertexCount = len(cmds.ls(spine_curve + '.cv[*]', fl=True))
+        #
         IKcontrolsArray = []
 
         # create controls IK
         for idx in range(vertexCount):
             dummy = cmds.group(name='test', em=True)
             cmds.xform(dummy, ws=True, t=posArray[idx])
+
+            if posArray[idx] == posArray[-1]:
+                cmds.xform(dummy, ws=True, t=posArray[-2])
+
             controlName = tools.remove_suffix(str(joinChain[idx]))
             ctrl = control.Control(prefix=controlName + '_IK', scale=scale * scaleIK, translateTo=dummy)
             IKcontrolsArray.append(ctrl)
@@ -120,6 +135,8 @@ class SpineStretch(object):
         self.curve = spine_curve
         self.COG_control = None
         self.spineAnimCurve = None
+        self.spine_grp = None
+        self.skell_group = None
 
         # execute methods
         nodes = self.create_pointOnCurve()
@@ -129,117 +146,46 @@ class SpineStretch(object):
         self.IKcontrolsArray = IKcontrolsArray
         self.FKcontrolsArray = FKcontrolsArray
 
-        #
+        ######################################################################################################
+        # call methods
         self.setTorsion()
         self.spineNoXform = self.closeStructure()
 
         # fix Ik Orientation and size + parenting to rigObject in Scene
-
         for idx in range(2, 6):
             IKcontrolsArray[idx * -1].setAngle('z')
             cmds.move(15, IKcontrolsArray[idx * -1].control + ".cv[*]", moveZ=True, absolute=True)
 
+        cmds.move(1, IKcontrolsArray[-1].control + ".cv[*]", moveY=True, relative=True)
+
         #
-
         factor = 1.2
-        cmds.scale(scaleIK * factor, scaleIK * factor, scaleIK * factor, IKcontrolsArray[0].control + ".cv[*]", relative=True)
-        cmds.scale(scaleIK * factor, scaleIK * factor, scaleIK * factor, IKcontrolsArray[-1].control + ".cv[*]", relative=True)
+        cmds.scale(scaleIK * factor, scaleIK * factor, scaleIK * factor,
+                   IKcontrolsArray[0].control + ".cv[*]", relative=True)
+        cmds.scale(scaleIK * factor, scaleIK * factor, scaleIK * factor,
+                   IKcontrolsArray[-1].control + ".cv[*]", relative=True)
 
-        if rigObject:
-
-            self.COG_controlRoot = FKcontrolsArray[0].root
-            self.COG_control = pm.ls(FKcontrolsArray[0].control, fl=True)[0]
-
-            cmds.parent(self.COG_controlRoot, rigObject.global_control_obj.control)
-            cmds.parent(self.spineNoXform, rigObject.noXformBodybody_group)
-
-            cmds.select(FKcontrolsArray[0].control)
-            tools.renameFamily('COG')
-
+        # make controls group
+        self.controls_group = cmds.createNode("transform", n="C_spine_controls_GRP")
+        cmds.parent(FKcontrolsArray[0].root, self.controls_group)
+        cmds.select(FKcontrolsArray[0].control)
+        tools.renameFamily('C_COG')
         cmds.select(clear=True)
 
-    ###################################################################################################
-    # build squatch and stretch
-    #
-    def buildSqandSt(self, spineJoints=[]):
+    ######################################################################################################
 
-        targets = spineJoints[1:-2]
-        curve = self.curve
-        value = cmds.arclen(curve)
-
-        nodeCvInfo = cmds.createNode('curveInfo', name='spineStretchCurveInfoNode')
-        nodeCvMD = cmds.createNode('multiplyDivide', name='spineStretchMultiplyDivideNode')
-        nodePlsMns = cmds.createNode('plusMinusAverage', name='spineStretchplusMinusAverageNode')
-
-        nodeNull = cmds.createNode('transform', name='spineStretchNullNode')
-        # cmds.setAttr(nodeNull + '.hiddenInOutliner', 1)
-
-        cmds.connectAttr(curve + '.worldSpace', nodeCvInfo + '.inputCurve', f=True)
-
-        #
-        cmds.setAttr(nodePlsMns + '.operation', 2)
-        cmds.setAttr(nodePlsMns + '.input2D[0].input2Dx', 1)
-        cmds.connectAttr(nodeCvMD + '.outputX', nodePlsMns + '.input2D[1].input2Dx', f=True)
-
-        #
-        cmds.setAttr(nodeCvMD + '.operation', 2)
-        cmds.setAttr(nodeCvMD + '.input1X', value)
-        cmds.connectAttr(nodeCvInfo + '.arcLength', nodeCvMD + '.input2X', f=True)
-
-        # values = keyframes of nulll node
-        nullVals = [1, 5, 10]
-        nullKeys = [1, 5, 1]
-
-        for idx, val in enumerate(nullVals):
-            cmds.setKeyframe(nodeNull, v=nullKeys[idx] * -1, at='translateX', t=val)
-
-        frameCaches = []
-
-        for idx, jnt in enumerate(targets):
-            mulDivSqSt = cmds.createNode('multiplyDivide', name='spineSqSt_' + jnt + '_scaleFactor')
-            cmds.setAttr(mulDivSqSt + '.operation', 1)
-
-            frameCache = cmds.createNode('frameCache', name='spineSqSt_' + jnt + '_frameCache')
-            frameCaches.append(frameCache)
-
-            # connections
-            cmds.connectAttr(nodeNull + '.translateX', frameCache + '.stream', f=True)
-            cmds.connectAttr(frameCache + '.varying', mulDivSqSt + '.input1X', f=True)
-            cmds.connectAttr(nodePlsMns + '.output2D.output2Dx', mulDivSqSt + '.input2X', f=True)
-
-            nodePlsMnsScaleMain = cmds.createNode('plusMinusAverage', name=jnt + 'spineStretchnodePlsMnsScaleMainNode')
-            cmds.setAttr(nodePlsMnsScaleMain + '.operation', 1)
-            cmds.setAttr(nodePlsMnsScaleMain + '.input2D[0].input2Dx', 1)
-            cmds.connectAttr(mulDivSqSt + '.outputX', nodePlsMnsScaleMain + '.input2D[1].input2Dx', f=True)
-
-            # connect joints
-            cmds.connectAttr(nodePlsMnsScaleMain + '.output2D.output2Dx', jnt + '.scaleY', force=True)
-            cmds.connectAttr(nodePlsMnsScaleMain + '.output2D.output2Dx', jnt + '.scaleZ', force=True)
-
-        for index, i in enumerate(range(nullVals[0], nullVals[-1] + 1, len(targets) + 1)):
-            if index == len(targets) - 1:
-                i = i + 1
-
-            cmds.setAttr(frameCaches[index] + '.varyTime', i)
-            # print(i, 'timming')
-            # print(index, 'index')
-            # print(frameCaches[index])
-
-        #
-        self.spineAnimCurve = nodeNull
-
-        return
+    def include_spine_joints(self):
+        for jnt, drv in zip(self.spineJoints, self.targets):
+            cmds.parentConstraint(drv, jnt, mo=True)
 
     ###################################################################################################
 
     def create_pointOnCurve(self):
         """
-
             Description: create the logic for the node pointOnCurveInfo
             @ return : a nested array with target groups and them upvectors
 
         """
-
         # print()
         curve = self.curve
         # number of CVs = degree + spans.
@@ -302,7 +248,8 @@ class SpineStretch(object):
             # set aim constraint
             if idx != (count - 1):
                 # print(trg, self.targets[idx + 1], up)
-                cmds.aimConstraint(self.targets[idx + 1], trg, worldUpType='object', worldUpObject=up, upVector=[0.0, 0.0, 1.0])
+                cmds.aimConstraint(self.targets[idx + 1], trg, worldUpType='object', worldUpObject=up,
+                                   upVector=[0.0, 0.0, 1.0])
 
         # parenting upvectors procedure: first and last
         cmds.parent(self.upVectors[0], self.IKcontrolsArray[0].control)
@@ -324,22 +271,28 @@ class SpineStretch(object):
 
         """
 
-        # print()
-        spine_grp = cmds.group(n='spine_noXform_grp', em=True)
+        spine_grp = cmds.group(n='C_spine_rig_GRP', em=True)
+        self.spine_grp = spine_grp
+        self.include_spine_joints()
+        #
         objects = self.targets[:]
         objects.extend(self.upVectors)
         objects.append(self.curve)
         toDo = [itm for itm in objects if pm.ls(itm)[0].getParent() is None]
-        # print(toDo)
         cmds.parent(toDo, spine_grp)
+        cmds.parent(self.spineJoints[0], spine_grp)
+        self.skell_group = self.create_deformation_chain()
+        cmds.hide(self.skell_group)
         cmds.hide(spine_grp)
-        # print()
 
         return spine_grp
 
+    ######################################################################################################
+
+    def create_deformation_chain(self):
+        return tools.create_deformation_joints_for_module(self.spine_grp)
 
 ###################################################################################################
 
 if __name__ == '__main__':
-    charSpine = SpineStretch
-    charSpine(joints=[HIPS, SPINE_END], scaleIK=4, scaleFK=20)
+    charSpine = SpineStretch(joints=["joint1_JNT", "joint6_JNT"], scaleIK=4, scaleFK=20)
