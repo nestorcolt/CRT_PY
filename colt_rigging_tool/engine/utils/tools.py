@@ -441,7 +441,7 @@ def makeControlsVisSetup(name='visibility', prefix='limb', attrHolder=None, cont
     mc.setAttr(node_blend_FK + '.colorIfFalseR', 1)
 
     # add both controls vis attribute
-    mc.addAttr(attrHolder, k=True, shortName='bothVis', longName='ShowBothSys', at='bool', defaultValue=1)
+    mc.addAttr(attrHolder, k=True, shortName='bothVis', longName='ShowBothSys', at='bool', defaultValue=0)
 
     # make connections
     mc.connectAttr(attrHolder + '.IK_0_FK_1', node_ik + '.firstTerm', force=True)

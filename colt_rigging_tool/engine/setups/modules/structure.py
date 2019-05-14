@@ -92,16 +92,14 @@ class Rig_structure():
                                             parent=self.main_control.control, lockChannels=['v'])
 
 
-
-
-        # separator user defiine attrs
-        cmds.addAttr(self.main_control.control, ln='UserDefineAttrs', at='enum', enumName='________:__', k=True)
-        cmds.setAttr("{}.UserDefineAttrs".format(self.main_control.control), lock=True)
-
         # add global scale attribute
         cmds.addAttr(self.main_control.control, ln='globalScale', at='float', k=True, defaultValue=1.0, minValue=0.2)
         for axis in 'xyz':
             cmds.connectAttr(self.main_control.control + '.globalScale', self.main_control.control + '.s%s' % axis)
+
+        # separator user defiine attrs
+        cmds.addAttr(self.main_control.control, ln='UserDefineAttrs', at='enum', enumName='________:__', k=True)
+        cmds.setAttr("{}.UserDefineAttrs".format(self.main_control.control), lock=True)
 
         main_visibility_attr = ['geoVisibility']
         main_display_attr = ['geoDisplayType']
