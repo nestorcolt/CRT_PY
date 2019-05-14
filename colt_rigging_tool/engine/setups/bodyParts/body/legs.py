@@ -35,7 +35,10 @@ class Leg(limb.Limb):
                  scaleIK=1.0,
                  scaleFK=1.0,
                  controlAngle=30,
-                 pole_vector_distance=40):
+                 pole_vector_distance=40,
+                 ik_hook = None,
+                 fk_hook=None,
+                 pv_hook=None):
 
         print(
             """
@@ -53,7 +56,10 @@ class Leg(limb.Limb):
             scaleFK=scaleFK,
             controlAngle=controlAngle,
             pole_vector_distance=pole_vector_distance,
-            positive_ik=False)
+            positive_ik=False,
+            fk_hook=fk_hook,
+            ik_hook=ik_hook,
+            pv_hook=pv_hook)
 
     ######################################################################################################
 
@@ -77,6 +83,7 @@ class Leg(limb.Limb):
         self.hideShapesCB()
         self.controlsVisibilitySetup()
         self.skell_group = self.create_deformation_chain()
+        self.hook()
         self.clean()
 
         ######################################################################################################

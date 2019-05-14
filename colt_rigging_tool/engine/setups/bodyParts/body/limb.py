@@ -30,7 +30,10 @@ class Limb(object):
                  scaleFK=1.0,
                  controlAngle=30,
                  pole_vector_distance = 60,
-                 positive_ik=True):
+                 positive_ik=True,
+                 fk_hook= None,
+                 ik_hook= None,
+                 pv_hook= None):
 
         # public member
         self.letter = tools.getSideLetter(firstJoint)
@@ -38,6 +41,9 @@ class Limb(object):
 
         self.scale = scale
         self.scaleFK = scaleFK
+        self.fk_hook = fk_hook
+        self.ik_hook = ik_hook
+        self.pv_hook = pv_hook
 
         # List joint chain from leg
         self.inputChain = tools.list_joint_hier(firstJoint)
@@ -120,6 +126,15 @@ class Limb(object):
         self.twistSysArray = []
 
     ###################################################################################################
+
+    def hook(self):
+        if self.fk_hook is not None:
+            cmds.parentConstraint(self.fk_hook, self.fk_controls[0].root, mo=True)
+
+        if self.ik_hook is not None:
+            cmds.parentConstraint(self.ik_hook, self.ik_group, mo=True)
+
+    ###################################################################################################
     # clean objects no needed on scene after construction completes
 
     @tools.undo_cmds
@@ -142,7 +157,7 @@ class Limb(object):
 
         if self.checkIK and not self.groupedIK:
             cmds.parent(self.ik_group, self.attachLineGrp, self.rig_group)
-            cmds.parent(self.ik_controls_group, self.poleVector.root,  self.controls_group)
+            cmds.parent(self.ik_mainControl_group, self.poleVector.root,  self.controls_group)
             self.groupedIK = True
 
     ###################################################################################################
@@ -244,7 +259,7 @@ class Limb(object):
             return
 
         ik_group = cmds.group(n=self.letter + '_' + self.prefix + '_IK_GRP', em=True)
-        self.ik_controls_group = cmds.group(n=self.letter + '_' + self.prefix + '_IK_controls_GRP', em=True)
+        self.ik_mainControl_group = cmds.group(n=self.letter + '_' + self.prefix + '_IK_controls_GRP', em=True)
 
         # this returns a pymel object. get object.name()
         ik_main_jnt = tools.copySkeleton(self.inputChain[0], 'IK')
@@ -310,7 +325,7 @@ class Limb(object):
         ik_control = control.Control(prefix=self.letter + '_' + self.prefix + '_IK', shape=2, angle='x',
                                      translateTo=ik_hier[-1], rotateTo=ik_hier[-1], scale=self.scale * 6)
 
-        cmds.parent(ik_control.root, self.ik_controls_group)
+        cmds.parent(ik_control.root, self.ik_mainControl_group)
         cmds.parentConstraint(ik_control.control, ik_handle[0])
         cmds.parent(ik_main_jnt.name(), ik_group)
 

@@ -70,15 +70,22 @@ def initChar(asset_name=None, debug = 1):
 
     for idx, side in enumerate("LR"):
         # ARMS
-        clavicle_joint = "{}_clavicle_JNT".format(side)
+        upperArm_joint = "{}_upperArm_JNT".format(side)
         hand_joint = "{}_hand_JNT".format(side)
-        arm = arms.Arm(armJoint=clavicle_joint, scaleFK=8)
-        arm.build(hand_join=hand_joint)
-        #
+        arm = arms.Arm(armJoint=upperArm_joint,
+                       clavicle_joint="{}_clavicle_JNT".format(side),
+                       scaleFK=8,
+                       fk_hook=charSpine.IKcontrolsArray[-1].control)
 
+        arm.build(hand_join=hand_joint)
+
+        #
         # LEGS
         upperLeg_joint = "{}_upperLeg_JNT".format(side)
-        leg = legs.Leg(legJoint=upperLeg_joint, scaleFK=8)
+        leg = legs.Leg(legJoint=upperLeg_joint,
+                       scaleFK=8,
+                       fk_hook=charSpine.COG_control.control,
+                       ik_hook=charSpine.COG_control.control)
         leg.build()
 
         # FEET
@@ -88,6 +95,7 @@ def initChar(asset_name=None, debug = 1):
                          hook_fk=hook,
                          hook_ik=hook,
                          attribute_holder="{}_leg_UI_CTL".format(side))
+
 
         foot.build()
         #
@@ -105,6 +113,13 @@ def initChar(asset_name=None, debug = 1):
     # merge body to rig system
     for module in body_modules:
         rig.include_modules(module=module)
+
+
+    if debug:
+        mc.setAttr("{}.jointVisibility".format(rig.main_control.control), debug)
+        mc.setAttr("{}.geoDisplayType".format(rig.main_control.control), 0)
+        mc.setAttr("{}.jointDisplayType".format(rig.main_control.control), 0)
+        mc.setAttr("{}.debug".format(rig.root_group), debug)
 
     #
     # DONE!

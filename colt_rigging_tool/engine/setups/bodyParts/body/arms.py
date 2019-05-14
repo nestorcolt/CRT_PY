@@ -14,7 +14,7 @@ reload(limb)
 
 ###################################################################################################
 # GLOBALS:
-CLAVICLE_JOINT = 'L_clavicle_JNT'
+CLAVICLE_JOINT = 'L_upperArm_JNT'
 HAND_JOINT = "L_hand_JNT"
 
 ###################################################################################################
@@ -31,13 +31,17 @@ class Arm(limb.Limb):
 
     def __init__(self,
                  armJoint='',
+                 clavicle_joint="",
                  name='armClass',
                  prefix='arm',
                  scale=1.0,
                  scaleIK=1.0,
                  scaleFK=1.0,
                  controlAngle=30,
-                 pole_vector_distance = 40):
+                 pole_vector_distance = 40,
+                 fk_hook=None,
+                 ik_hook=None,
+                 pv_hook=None):
 
         print(
             """
@@ -55,11 +59,15 @@ class Arm(limb.Limb):
                  scaleFK=scaleFK,
                  controlAngle=controlAngle,
                  pole_vector_distance = pole_vector_distance,
-                 positive_ik=True)
+                 positive_ik=True,
+                 fk_hook=fk_hook,
+                 ik_hook=ik_hook,
+                 pv_hook=pv_hook)
 
 
         # PROPERTIES
-        self.ik_clavicle_control = None
+        self.fk_clavicle_control = None
+        self.clavicle_joint = clavicle_joint
 
         # hand controls
         self.handTopCtrl = None
@@ -77,20 +85,20 @@ class Arm(limb.Limb):
     @tools.undo_cmds
     def build(self, hand_join="", twist_chain_len=5):
 
-        self.makeFK(simple_fk=False)
+        self.makeFK(simple_fk=True)
         self.makeIK()
 
         self.groupSystem()
         self.makeBlending()
 
-        self.makeIkClavicle(chain=self.ik_hier, rigGroup=self.ik_group)
+        self.make_clavicle()
 
         self.makeFkStretchSystem()
         self.makeIkStretchSystem()
 
         self.connectStretchSystem()
         #
-        self.collectTwistJoints(limbJoints=self.inputChain[1:-1], index=twist_chain_len)
+        self.collectTwistJoints(limbJoints=self.inputChain[0:-1], index=twist_chain_len)
         self.makeTwistSystem()
         #
         if hand_join:
@@ -101,26 +109,34 @@ class Arm(limb.Limb):
         self.hideShapesCB()
         self.controlsVisibilitySetup()
         self.skell_group = self.create_deformation_chain()
+        self.hook()
         self.clean()
 
         ######################################################################################################
 
-    def makeIkClavicle(self, chain=[], rigGroup=""):
+    def make_clavicle(self,):
         # IK clavicle control
-        clavNameCtrl = tools.remove_suffix(chain[0])
-        ik_clavicleControl = control.Control(prefix=clavNameCtrl + '_IK', shape=4, translateTo=chain[0],
-                                             rotateTo=chain[0], scale=self.scale)
+        clavNameCtrl = tools.remove_suffix(self.clavicle_joint)
+        clavicleControl = control.Control(prefix=clavNameCtrl, shape=4, translateTo=self.clavicle_joint,
+                                          rotateTo=self.clavicle_joint, scale=self.scale)
 
-        if cmds.getAttr(chain[0] + '.tx') >= 0:
-            cmds.move(10, ik_clavicleControl.control + "*Shape" + ".cv[*]", moveZ=True, absolute=True)
-        elif cmds.getAttr(chain[0] + '.tx') < 0:
-            cmds.move(10, ik_clavicleControl.control + "*Shape" + ".cv[*]", moveZ=True, absolute=True)
+        if cmds.getAttr(self.clavicle_joint + '.tx') >= 0:
+            cmds.move(10, clavicleControl.control + "*Shape" + ".cv[*]", moveZ=True, absolute=True)
+        elif cmds.getAttr(self.clavicle_joint + '.tx') < 0:
+            cmds.move(10, clavicleControl.control + "*Shape" + ".cv[*]", moveZ=True, absolute=True)
 
-        cmds.parentConstraint(ik_clavicleControl.control, chain[0])
-        cmds.parent(ik_clavicleControl.root, self.ik_controls_group)
+        cmds.parentConstraint(clavicleControl.control, self.clavicle_joint)
+        cmds.parent(clavicleControl.root, self.controls_group)
+        #
+        cmds.parentConstraint(clavicleControl.control, self.fk_controls[0].root, mo=True)
+        cmds.parentConstraint(clavicleControl.control, self.ik_group, mo=True)
+        cmds.parent(self.clavicle_joint, self.rig_group)
+        self.fk_clavicle_control = clavicleControl
 
-        self.ik_clavicle_control = ik_clavicleControl
+    ######################################################################################################
 
+    def hook(self):
+        cmds.parentConstraint(self.fk_hook, self.fk_clavicle_control.root, mo=True)
 
     ###################################################################################################
     # creates the system for controls visibility IK FK or both
@@ -129,7 +145,7 @@ class Arm(limb.Limb):
         # note: the attribute holder is a pm.core node type
         attrHolder = self.attributeHolder
         fkControls = [ctrl.control for ctrl in self.fk_controls]
-        ikControls = [ctrl.control for ctrl in [self.ik_control, self.ik_clavicle_control, self.poleVector]]
+        ikControls = [ctrl.control for ctrl in [self.ik_control, self.poleVector]]
         ikControls.append(self.poleVectorAttachLine)
 
         # call generic function from tools module
@@ -285,7 +301,7 @@ class Arm(limb.Limb):
 
         if self.checkIK:
             tools.hideShapesChannelBox([self.poleVector.control, self.ik_control.control,
-                                        self.ik_clavicle_control.control, self.attributeHolder])
+                                        self.fk_clavicle_control.control, self.attributeHolder])
 
         else:
             cmds.warning('FK and IK system must be both created to hide shapes from controls in channelbox')
@@ -295,18 +311,10 @@ class Arm(limb.Limb):
 
 
 # IN MODULE TEST:
-# if __name__ == '__main__':
-# tools.re_open_current_file()
-# instance:
-# arm = Arm(armJoint=CLAVICLE_JOINT, scaleFK=8)
-# arm.build(hand_join=HAND_JOINT)
-# arm.make_auto_fist(value=-20, force=True)
-# cmds.select(clear=True)
-# del arm
-# pass
-# rig = filter(lambda itm: itm.endswith("skell_group"),
-#              [obj for obj in vars(arm).keys()])
-#
-# print(vars(arm))
-#
-# print(rig)
+if __name__ == '__main__':
+    tools.re_open_current_file()
+    arm = Arm(armJoint=CLAVICLE_JOINT, scaleFK=8, clavicle_joint="L_clavicle_JNT")
+    arm.build(hand_join=HAND_JOINT)
+    arm.make_auto_fist(value=-20, force=True)
+    cmds.select(clear=True)
+    del arm

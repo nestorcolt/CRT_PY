@@ -133,7 +133,6 @@ class False_IKFK_spine(object):
 
         # Public members
         self.curve = spine_curve
-        self.COG_control = None
         self.spineAnimCurve = None
         self.skell_group = None
         self.rig_group= cmds.createNode("transform", n="C_spine_rig_GRP")
@@ -146,6 +145,7 @@ class False_IKFK_spine(object):
 
         self.IKcontrolsArray = IKcontrolsArray
         self.FKcontrolsArray = FKcontrolsArray
+
 
         ######################################################################################################
         # call methods
@@ -169,8 +169,7 @@ class False_IKFK_spine(object):
         # make controls group
 
         cmds.parent(FKcontrolsArray[0].root, self.controls_group)
-        cmds.select(FKcontrolsArray[0].control)
-        tools.renameFamily('C_COG')
+        self.COG_control = FKcontrolsArray[0]
         cmds.select(clear=True)
 
     ######################################################################################################
@@ -282,9 +281,6 @@ class False_IKFK_spine(object):
         cmds.parent(toDo, spine_grp)
         cmds.parent(self.spineJoints[0], spine_grp)
         self.skell_group = self.create_deformation_chain()
-        cmds.hide(self.skell_group)
-        cmds.hide(spine_grp)
-
         return spine_grp
 
     ######################################################################################################
@@ -295,4 +291,4 @@ class False_IKFK_spine(object):
 ###################################################################################################
 
 if __name__ == '__main__':
-    charSpine = False_IKFK_spine(joints=["joint1_JNT", "joint6_JNT"], scaleIK=4, scaleFK=20)
+    charSpine = False_IKFK_spine(joints=["C_hip_JNT", "C_spine_05_JNT"], scaleIK=4, scaleFK=20)

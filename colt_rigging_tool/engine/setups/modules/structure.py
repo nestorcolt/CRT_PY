@@ -70,6 +70,7 @@ class Rig_structure():
         cmds.addAttr(self.root_group, ln="rigVersion", dt='string', k=False)
         cmds.addAttr(self.root_group, ln="geometryVersion", dt='string', k=False)
 
+
         # connect messages
         cmds.addAttr(self.root_group, ln="skinGeo", at='message', k=False)
         if self.skin and cmds.objExists(self.skin):
@@ -115,7 +116,8 @@ class Rig_structure():
 
         # add rig display connections
         for at, obj in zip(main_display_attr, obj_to_add_attrs):
-            cmds.addAttr(self.main_control.control, ln=at, at='enum', enumName='normal:template:reference', k=True)
+            cmds.addAttr(self.main_control.control, ln=at, at='enum', enumName='normal:template:reference', k=True,
+                         defaultValue=2)
             cmds.setAttr(self.main_control.control + '.' + at, cb=True)
             cmds.setAttr(obj + '.ove', True)
             cmds.connectAttr(self.main_control.control + '.' + at, obj + '.ovdt')
@@ -123,6 +125,22 @@ class Rig_structure():
         self.main_control.lockChannels = ['s']
         self.main_control.lock_control_channels()
         cmds.parent(self.controls_group, self.walk_control.control)
+
+        cmds.addAttr(self.main_control.control, ln="jointVisibility", at='enum', enumName='off:on', k=True,
+                     defaultValue=0)
+
+        cmds.setAttr(self.main_control.control + '.' + "jointVisibility", cb=True)
+        cmds.connectAttr(self.main_control.control + '.' + "jointVisibility", self.body_skell_group + '.v')
+        cmds.connectAttr(self.main_control.control + '.' + "jointVisibility", self.face_skell_group + '.v')
+        #
+        cmds.addAttr(self.main_control.control, ln="jointDisplayType", at='enum', enumName='normal:template:reference',
+                     defaultValue=2, k=True)
+        cmds.setAttr(self.main_control.control + '.' + "jointDisplayType", cb=True)
+        cmds.setAttr(self.face_skell_group + '.ove', True)
+        cmds.setAttr(self.body_skell_group + '.ove', True)
+        cmds.connectAttr(self.main_control.control + '.' + "jointDisplayType", self.body_skell_group + '.ovdt')
+        cmds.connectAttr(self.main_control.control + '.' + "jointDisplayType", self.face_skell_group + '.ovdt')
+
 
         # reorder main groups
         cmds.reorder(self.modules_group, front=True)
@@ -132,6 +150,15 @@ class Rig_structure():
         if geometry_group and cmds.objExists(geometry_group):
             cmds.parent(geometry_group, self.geometry_group)
 
+        # debugging
+        cmds.addAttr(self.root_group, ln="debug", at='bool', k=False, defaultValue=0)
+
+        debug_vis = [self.rig_blend_group, self.face_geometries_group, self.face_rig_group,
+                     self.body_rig_group]
+
+        for itm in debug_vis:
+            cmds.connectAttr("{}.debug".format(self.root_group), "{}.lodVisibility".format(itm), f=True)
+
     ###################################################################################################
 
     def include_modules(self, body=True, module=None):
@@ -140,10 +167,6 @@ class Rig_structure():
             rig = [itm for itm in directories if itm.endswith("rig_group")]
             skell = [itm for itm in directories if itm.endswith("skell_group")]
             controls = [getattr(module, itm) for itm in directories if itm.endswith("controls_group")]
-            print(module)
-            print(rig)
-            print(skell)
-            print(controls)
             [cmds.parent(itm, self.controls_group) for itm in controls]
 
             if body:
@@ -155,5 +178,5 @@ class Rig_structure():
 
 ###################################################################################################
 if __name__ == '__main__':
-    run = Rig_structure('Mark', geometry_group='geos')
+    run = Rig_structure('Mark', geometry_group='geometries_grp', skin_geo="C_body_geo")
     cmds.select(clear=True)
