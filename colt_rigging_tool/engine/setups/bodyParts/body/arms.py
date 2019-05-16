@@ -83,7 +83,7 @@ class Arm(limb.Limb):
     ######################################################################################################
 
     @tools.undo_cmds
-    def build(self, hand_join="", twist_chain_len=5):
+    def build(self, hand_join="", twist_chain_len=5, make_stretch=True, make_twist=True):
 
         self.makeFK(simple_fk=True)
         self.makeIK()
@@ -93,13 +93,17 @@ class Arm(limb.Limb):
 
         self.make_clavicle()
 
-        self.makeFkStretchSystem()
-        self.makeIkStretchSystem()
+        if make_stretch:
+            self.makeFkStretchSystem()
+            self.makeIkStretchSystem()
 
-        self.connectStretchSystem()
-        #
-        self.collectTwistJoints(limbJoints=self.inputChain[0:-1], index=twist_chain_len)
-        self.makeTwistSystem()
+            self.connectStretchSystem()
+
+        if make_twist:
+            #
+            self.collectTwistJoints(limbJoints=self.inputChain[0:-1], index=twist_chain_len)
+            self.makeTwistSystem()
+
         #
         if hand_join:
             self.makeHand(hand_joint=hand_join)

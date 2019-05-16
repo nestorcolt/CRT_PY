@@ -64,7 +64,7 @@ class Leg(limb.Limb):
     ######################################################################################################
 
     @tools.undo_cmds
-    def build(self, twist_chain_len=5):
+    def build(self, twist_chain_len=5, make_stretch=True, make_twist=True):
 
         self.makeFK(simple_fk=True, world_orient=True)
         self.makeIK(world_orient=True)
@@ -72,13 +72,17 @@ class Leg(limb.Limb):
         self.groupSystem()
         self.makeBlending()
         #
-        self.makeFkStretchSystem()
-        self.makeIkStretchSystem()
+        if make_stretch:
+            self.makeFkStretchSystem()
+            self.makeIkStretchSystem()
 
-        self.connectStretchSystem()
-        # #
-        self.collectTwistJoints(limbJoints=self.inputChain[:-1], index=twist_chain_len)
-        self.makeTwistSystem()
+            self.connectStretchSystem()
+
+        if make_twist:
+            # #
+            self.collectTwistJoints(limbJoints=self.inputChain[:-1], index=twist_chain_len)
+            self.makeTwistSystem()
+
         # #
         self.hideShapesCB()
         self.controlsVisibilitySetup()
