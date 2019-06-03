@@ -156,8 +156,8 @@ class Limb(object):
             self.groupedFK = True
 
         if self.checkIK and not self.groupedIK:
-            cmds.parent(self.ik_group, self.attachLineGrp, self.rig_group)
-            cmds.parent(self.ik_mainControl_group, self.poleVector.root,  self.controls_group)
+            cmds.parent(self.ik_group, self.rig_group)
+            cmds.parent(self.ik_mainControl_group, self.poleVector.root, self.attachLineGrp,  self.controls_group)
             self.groupedIK = True
 
     ###################################################################################################

@@ -26,7 +26,7 @@ CURRENT_RIG = None
 ASSET = None
 ###################################################################################################
 # GLOBALS
-BUILDER_SCENE_PATH = r"C:\Users\colt-desk\Desktop\biped_2019\biped\scenes"
+BUILDER_SCENE_PATH = r"C:\Users\colt-desk\Desktop\development\ColtRiggingTool\test_file"
 # CONTROLS_DATA_PATH = r"C:\Users\colt-desk\Desktop\Salle\2019\Abril\II entrega\mech_project\data\builder\controls"
 ###################################################################################################
 #
@@ -39,7 +39,7 @@ def initChar(asset_name=None, debug = 1):
 
     # Open latest builder file
     # latest_builder = tools.get_last_file_version(BUILDER_SCENE_PATH, "biped_000", incremental=False)
-    builder_path = os.path.join(BUILDER_SCENE_PATH, "biped_005_my_build.mb")
+    builder_path = os.path.join(BUILDER_SCENE_PATH, "guides_test_file.ma")
 
     if not os.path.exists(builder_path):
         mc.error("Builder path doesn't exist")

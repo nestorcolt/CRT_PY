@@ -2,8 +2,8 @@ import collections
 import json
 import os
 
-from engine.utils import tools
-from engine.utils import api_functions
+from colt_rigging_tool.engine.utils import tools
+from colt_rigging_tool.engine.utils import api_functions
 import maya.OpenMaya as om
 import maya.cmds as mc
 import pymel.core as pm
